@@ -1,0 +1,6 @@
+{
+  "name": "typescript",
+  "description": "TypeScript language best practices",
+  "includes": ["universal"],
+  "mcpDefaults": ["github", "filesystem"]
+}

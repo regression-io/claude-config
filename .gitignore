@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.Python
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files (when used in development)
+.env
+.env.local
+*.env.local
+
+# Project-specific
+build/
+# Note: ui/dist is included for npm package distribution
+*.egg-info/
+.pytest_cache/
+
+# Local config (not for distribution)
+.claude/
+.mcp.json
+package-lock.json

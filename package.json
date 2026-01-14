@@ -1,0 +1,60 @@
+{
+  "name": "claude-config",
+  "version": "1.0.0",
+  "description": "Configuration management UI for Claude Code - manage MCPs, rules, commands, memory, and .claude folders",
+  "author": "regression.io",
+  "main": "config-loader.js",
+  "type": "commonjs",
+  "bin": {
+    "claude-config": "./cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js ui",
+    "display": "node cli.js display",
+    "ui": "node cli.js ui",
+    "ui:dev": "cd ui && npm run dev",
+    "ui:build": "cd ui && npm run build",
+    "build": "cd ui && npm install && npm run build",
+    "prepublishOnly": "npm run build",
+    "postinstall": "node scripts/postinstall.js",
+    "test": "echo \"Tests not yet implemented\""
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "configuration",
+    "mcp",
+    "model-context-protocol",
+    "project-management",
+    "cli"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.1",
+    "node-pty": "^1.2.0-beta.6",
+    "ws": "^8.19.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/regression-io/claude-config.git"
+  },
+  "bugs": {
+    "url": "https://github.com/regression-io/claude-config/issues"
+  },
+  "homepage": "https://github.com/regression-io/claude-config#readme",
+  "files": [
+    "cli.js",
+    "config-loader.js",
+    "ui/server.cjs",
+    "ui/terminal-server.cjs",
+    "ui/dist/**",
+    "templates/**",
+    "shared/**",
+    "scripts/**",
+    "README.md"
+  ]
+}

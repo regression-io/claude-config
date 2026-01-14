@@ -1,0 +1,29 @@
+# Development files
+.git
+.gitignore
+.DS_Store
+*.log
+
+# UI source (only include dist)
+ui/src
+ui/node_modules
+ui/package.json
+ui/package-lock.json
+ui/vite.config.js
+ui/tailwind.config.js
+ui/postcss.config.js
+ui/index.html
+ui/components.json
+ui/jsconfig.json
+
+# Dev scripts
+install.sh
+bin/
+
+# Claude/IDE files
+.claude/
+.mcp.json
+
+# Test files
+test/
+*.test.js

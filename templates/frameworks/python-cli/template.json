@@ -1,0 +1,6 @@
+{
+  "name": "python-cli",
+  "description": "Python CLI application",
+  "includes": ["universal", "languages/python"],
+  "mcpDefaults": ["github", "filesystem"]
+}

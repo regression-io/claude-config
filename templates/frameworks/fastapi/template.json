@@ -1,0 +1,6 @@
+{
+  "name": "fastapi",
+  "description": "FastAPI REST API framework",
+  "includes": ["universal", "languages/python"],
+  "mcpDefaults": ["github", "filesystem", "postgres"]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "python",
+  "description": "Python language best practices",
+  "includes": ["universal"],
+  "mcpDefaults": ["github", "filesystem"]
+}
