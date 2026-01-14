@@ -1,171 +1,129 @@
 # Claude Config
 
-A configuration management UI for **Claude Code** that provides:
-
-- **Web UI** for managing MCPs, rules, commands, and memory
-- **File Explorer** for full .claude folder management at every hierarchy level
-- **MCP Registry** with GitHub/npm search and smart import
-- **Memory System** for preferences, corrections, patterns, and decisions
-- **Settings** for tools directory and other preferences
+Configuration management for **Claude Code** with CLI and optional Web UI.
 
 ## Installation
 
-### Option 1: npm (recommended)
-
 ```bash
-# Install globally
 npm install -g claude-config
-
-# Run the UI
-claude-config
 ```
 
-### Option 2: From GitHub
-
+Or from GitHub:
 ```bash
-# Install from GitHub
 npm install -g github:regression-io/claude-config
-
-# Run the UI
-claude-config
 ```
 
-### Option 3: Local Development
+## Quick Start
 
 ```bash
-# Clone the repo
-git clone https://github.com/regression-io/claude-config.git
-cd claude-config
+# Initialize a project with a template
+claude-config init --template fastapi
 
-# Install dependencies and build
-npm install
-npm run build
+# Add MCPs to your project
+claude-config add postgres github
 
-# Run
-npm start
-# or
-node cli.js
+# Generate .mcp.json for Claude Code
+claude-config apply
+
+# Or open the Web UI
+claude-config ui
 ```
 
-## Usage
+## CLI Commands
 
-### Start the Web UI
+### Project Commands
 
 ```bash
-# Default port 3333
-claude-config
-
-# Custom port
-claude-config --port 8080
-
-# For a specific project directory
-claude-config /path/to/project
+claude-config init [--template <name>]   # Initialize project
+claude-config apply                       # Generate .mcp.json from config
+claude-config apply-template <name>       # Add template to existing project
+claude-config show                        # Show current project config
+claude-config list                        # List available MCPs (✓ = active)
+claude-config templates                   # List available templates
+claude-config add <mcp> [mcp...]          # Add MCP(s) to project
+claude-config remove <mcp> [mcp...]       # Remove MCP(s) from project
 ```
 
-Then open http://localhost:3333 in your browser.
-
-### CLI Commands
+### Registry Commands
 
 ```bash
-claude-config                    # Start web UI (default)
-claude-config ui                 # Start web UI
-claude-config ui --port 8080     # Custom port
-claude-config display            # Show current configuration
-claude-config init               # Initialize .claude folder
-claude-config --help             # Show help
-claude-config --version          # Show version
+claude-config registry-add <name> '<json>'   # Add MCP to global registry
+claude-config registry-remove <name>         # Remove MCP from registry
 ```
 
-## Features
+### Web UI
 
-### File Explorer
-
-Browse and edit all .claude folders in the hierarchy from home (~) to your project:
-
-- `mcps.json` - MCP configurations with toggle controls
-- `settings.json` - Claude Code settings
-- `rules/*.md` - Project-specific rules
-- `commands/*.md` - Custom commands
-- `CLAUDE.md` - Project instructions
-
-Create new .claude folders at any intermediate level.
-
-### MCP Registry
-
-Manage your MCP (Model Context Protocol) servers:
-
-- View all registered MCPs
-- Add/edit/delete MCP configurations
-- Search GitHub and npm for new MCPs
-- Smart import with Claude Code analysis
-- Toggle MCPs on/off per configuration level
-
-### Memory System
-
-Persistent memory for Claude Code sessions:
-
-**Global Memory** (`~/.claude/memory/`):
-- `preferences.md` - User preferences (tools, style)
-- `corrections.md` - Mistakes to avoid
-- `facts.md` - Environment facts
-
-**Project Memory** (`<project>/.claude/memory/`):
-- `context.md` - Project overview
-- `patterns.md` - Code patterns
-- `decisions.md` - Architecture decisions
-- `issues.md` - Known issues
-- `history.md` - Session history
-
-### Settings
-
-Configure via UI or `~/.claude/config.json`:
-
-```json
-{
-  "toolsDir": "~/mcp-tools",
-  "registryPath": "~/.claude/registry.json",
-  "ui": {
-    "port": 3333,
-    "openBrowser": true
-  }
-}
+```bash
+claude-config ui                    # Start UI on port 3333
+claude-config ui --port 8080        # Custom port
+claude-config ui /path/to/project   # Specific project directory
 ```
+
+## Templates
+
+Initialize projects with pre-configured rules and settings:
+
+```bash
+# List available templates
+claude-config templates
+
+# Frameworks
+claude-config init --template fastapi
+claude-config init --template react-ts
+claude-config init --template python-cli
+claude-config init --template mcp-python
+
+# Languages
+claude-config init --template python
+claude-config init --template typescript
+
+# Monorepos
+claude-config init --template fastapi-react-ts
+claude-config init --template fastapi-react-js
+```
+
+Add templates to existing projects:
+```bash
+claude-config apply-template python
+```
+
+## Shell Integration
+
+For auto-apply on directory change, add to `~/.zshrc`:
+
+```bash
+source /path/to/claude-config/shell/claude-config.zsh
+```
+
+This enables:
+- Auto-generates `.mcp.json` when entering a project with `.claude/mcps.json`
+- Tab completion for all commands
 
 ## Configuration Hierarchy
 
-Claude Config supports hierarchical configuration. Settings merge from home to project:
+Settings merge from global to project:
 
 ```
-~/.claude/mcps.json          (global - applies everywhere)
-~/projects/.claude/mcps.json (workspace - applies to all projects here)
-~/projects/my-app/.claude/   (project - specific to this project)
+~/.claude/mcps.json              # Global - applies everywhere
+~/projects/.claude/mcps.json     # Workspace - applies to projects here
+~/projects/my-app/.claude/       # Project - specific to this project
 ```
-
-MCPs enabled at higher levels apply to all descendant projects.
 
 ## Project Structure
 
-After initialization:
+After `claude-config init`:
 
 ```
 your-project/
 ├── .claude/
 │   ├── mcps.json       # MCP configuration
 │   ├── settings.json   # Claude Code settings
-│   ├── rules/          # Project rules for Claude
-│   │   └── *.md
-│   ├── commands/       # Custom slash commands
-│   │   └── *.md
-│   └── memory/         # Project memory (if initialized)
-│       ├── context.md
-│       ├── patterns.md
-│       ├── decisions.md
-│       ├── issues.md
-│       └── history.md
+│   ├── rules/          # Project rules (*.md)
+│   └── commands/       # Custom commands (*.md)
 └── .mcp.json           # Generated - Claude Code reads this
 ```
 
-## MCP Configuration Format
+## MCP Configuration
 
 `.claude/mcps.json`:
 
@@ -187,28 +145,29 @@ your-project/
 }
 ```
 
-Environment variables use `${VAR}` syntax and are loaded from `.claude/.env`.
+Environment variables use `${VAR}` syntax and load from `.claude/.env`.
+
+## Web UI Features
+
+When you run `claude-config ui`:
+
+- **File Explorer** - Browse/edit all .claude folders in hierarchy
+- **MCP Registry** - Search GitHub/npm, add/edit/delete MCPs
+- **Memory System** - Manage preferences, corrections, patterns, decisions
+- **Templates** - Apply rule templates to projects
 
 ## Requirements
 
 - Node.js 18+
-- npm or pnpm
 
 ## Development
 
 ```bash
-# Install dependencies
+git clone https://github.com/regression-io/claude-config.git
+cd claude-config
 npm install
-cd ui && npm install
-
-# Development mode (hot reload)
-npm run ui:dev
-
-# Build for production
 npm run build
-
-# Create npm package
-npm pack
+npm start
 ```
 
 ## License
