@@ -173,7 +173,7 @@ function TreeItem({ item, level = 0, selectedPath, onSelect, onContextMenu, expa
 }
 
 // Folder Row Component - collapsible tree entry
-function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onToggle, onCreateFile, onSelectItem, selectedPath, onContextMenu, expandedFolders, onToggleFolder, templates }) {
+function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onToggle, onCreateFile, onSelectItem, selectedPath, onContextMenu, expandedFolders, onToggleFolder, templates, hasSubprojects }) {
   // Check what files already exist
   const hasMcps = folder.files?.some(f => f.name === 'mcps.json');
   const hasSettings = folder.files?.some(f => f.name === 'settings.json');
@@ -295,7 +295,8 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
               CLAUDE.md
               {hasClaudeMd && <span className="ml-auto text-xs text-muted-foreground">exists</span>}
             </DropdownMenuItem>
-            {templates && templates.length > 0 && (
+            {/* Only show Apply Template for sub-projects, or for home/root when no sub-projects exist */}
+            {templates && templates.length > 0 && (isSubproject || !hasSubprojects) && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuSub>
@@ -911,9 +912,12 @@ export default function FileExplorer({ project, onRefresh }) {
       setTemplates(templatesData.templates || templatesData || []);
       setEnabledTools(configData.config?.enabledTools || ['claude']);
 
-      // Auto-expand the first folder (Home) if none expanded
+      // Auto-expand the root project (not home) if none expanded
       if (!expandedFolder && foldersData.length > 0) {
-        setExpandedFolder(foldersData[0].dir);
+        // Find the last non-subproject folder (the root project)
+        const nonSubprojects = foldersData.filter(f => !f.isSubproject);
+        const rootProject = nonSubprojects.length > 1 ? nonSubprojects[nonSubprojects.length - 1] : nonSubprojects[0];
+        setExpandedFolder(rootProject?.dir || foldersData[0].dir);
       }
     } catch (error) {
       toast.error('Failed to load data: ' + error.message);
@@ -1113,6 +1117,7 @@ export default function FileExplorer({ project, onRefresh }) {
   }
 
   // Determine folder types
+  const hasSubprojects = folders.some(f => f.isSubproject);
   const getIsHome = (folder, index) => index === 0;
   const getIsProject = (folder, index) => {
     const firstSubprojectIndex = folders.findIndex(f => f.isSubproject);
@@ -1162,6 +1167,7 @@ export default function FileExplorer({ project, onRefresh }) {
               expandedFolders={expandedFolders}
               onToggleFolder={handleToggleNestedFolder}
               templates={templates}
+              hasSubprojects={hasSubprojects}
             />
           ))}
         </ScrollArea>
