@@ -1210,10 +1210,30 @@ export default function FileExplorer({ project, onRefresh }) {
                   {folder.exists ? 'Empty .claude' : 'No .claude folder'}
                 </div>
               )}
+              {/* Gemini CLI .gemini folder */}
+              {folder.geminiExists && folder.geminiFiles?.length > 0 && (
+                <div className="py-1 border-t border-dashed border-gray-200 dark:border-slate-700 mt-1">
+                  <div className="px-3 py-1 text-[10px] font-medium text-blue-600 uppercase tracking-wide flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Gemini CLI
+                  </div>
+                  {folder.geminiFiles.map((file) => (
+                    <TreeItem
+                      key={file.path}
+                      item={file}
+                      selectedPath={selectedItem?.path}
+                      onSelect={handleSelectItem}
+                      onContextMenu={handleContextMenu}
+                      expandedFolders={expandedFolders}
+                      onToggleFolder={handleToggleFolder}
+                    />
+                  ))}
+                </div>
+              )}
               {/* Antigravity .agent folder */}
               {folder.agentExists && folder.agentFiles?.length > 0 && (
                 <div className="py-1 border-t border-dashed border-gray-200 dark:border-slate-700 mt-1">
-                  <div className="px-3 py-1 text-[10px] font-medium text-blue-600 uppercase tracking-wide flex items-center gap-1">
+                  <div className="px-3 py-1 text-[10px] font-medium text-purple-600 uppercase tracking-wide flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     Antigravity
                   </div>

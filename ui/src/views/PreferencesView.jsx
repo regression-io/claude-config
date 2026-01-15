@@ -315,9 +315,27 @@ export default function PreferencesView() {
                     <Sparkles className="w-4 h-4 text-blue-500" />
                   </div>
                   <div>
+                    <label className="text-sm font-medium text-foreground">Gemini CLI</label>
+                    <p className="text-xs text-muted-foreground">
+                      Google's terminal AI coding assistant • Output: <code className="text-xs">~/.gemini/settings.json</code>
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={(config?.enabledTools || ['claude']).includes('gemini')}
+                  onCheckedChange={() => toggleTool('gemini')}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-md bg-purple-500/10 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-purple-500" />
+                  </div>
+                  <div>
                     <label className="text-sm font-medium text-foreground">Antigravity</label>
                     <p className="text-xs text-muted-foreground">
-                      Google's AI coding assistant • Output: <code className="text-xs">~/.gemini/antigravity/mcp_config.json</code>
+                      Google's AI IDE • Output: <code className="text-xs">~/.gemini/antigravity/mcp_config.json</code>
                     </p>
                   </div>
                 </div>

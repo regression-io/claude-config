@@ -19,12 +19,14 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const VERSION = '0.20.6';
+const VERSION = '0.20.7';
 
 // Tool-specific path configurations
 const TOOL_PATHS = {
   claude: {
     name: 'Claude Code',
+    icon: 'sparkles',
+    color: 'orange',
     globalConfig: '~/.claude/mcps.json',
     globalSettings: '~/.claude/settings.json',
     projectFolder: '.claude',
@@ -35,8 +37,24 @@ const TOOL_PATHS = {
     outputFile: '.mcp.json',
     supportsEnvInterpolation: true,
   },
+  gemini: {
+    name: 'Gemini CLI',
+    icon: 'terminal',
+    color: 'blue',
+    globalConfig: '~/.gemini/settings.json', // MCP config is merged into settings.json under mcpServers key
+    globalSettings: '~/.gemini/settings.json',
+    projectFolder: '.gemini',
+    projectRules: '.gemini',
+    projectCommands: '.gemini/commands', // Uses TOML format
+    projectInstructions: 'GEMINI.md',
+    outputFile: '.gemini/settings.json', // Project-level settings
+    supportsEnvInterpolation: true, // Gemini CLI likely supports ${VAR}
+    mergeIntoSettings: true, // MCP config is merged into settings.json, not standalone
+  },
   antigravity: {
     name: 'Antigravity',
+    icon: 'rocket',
+    color: 'purple',
     globalConfig: '~/.gemini/antigravity/mcp_config.json',
     globalRules: '~/.gemini/GEMINI.md',
     projectFolder: '.agent',
@@ -608,6 +626,144 @@ class ClaudeConfigManager {
   }
 
   /**
+   * Generate MCP config for Gemini CLI
+   * Gemini CLI stores MCP config inside ~/.gemini/settings.json under mcpServers key
+   */
+  applyForGemini(projectDir = null) {
+    const dir = projectDir || this.findProjectRoot() || process.cwd();
+    const paths = TOOL_PATHS.gemini;
+
+    const registry = this.loadJson(this.registryPath);
+    if (!registry) {
+      console.error('Error: Could not load MCP registry');
+      return false;
+    }
+
+    // Find and load all configs in hierarchy (from .claude folders)
+    const configLocations = this.findAllConfigs(dir);
+
+    if (configLocations.length === 0) {
+      console.error(`No .claude/mcps.json found in ${dir} or parent directories`);
+      return false;
+    }
+
+    // Load all configs and merge
+    const loadedConfigs = configLocations.map(loc => ({
+      ...loc,
+      config: this.loadJson(loc.configPath)
+    }));
+    const mergedConfig = this.mergeConfigs(loadedConfigs);
+
+    // Collect env vars from all levels
+    const globalEnvPath = path.join(path.dirname(this.registryPath), '.env');
+    let env = this.loadEnvFile(globalEnvPath);
+
+    for (const { dir: d } of configLocations) {
+      const envPath = path.join(d, '.claude', '.env');
+      env = { ...env, ...this.loadEnvFile(envPath) };
+    }
+
+    const mcpServers = {};
+
+    // Add MCPs from include list
+    if (mergedConfig.include && Array.isArray(mergedConfig.include)) {
+      for (const name of mergedConfig.include) {
+        if (registry.mcpServers && registry.mcpServers[name]) {
+          // Keep ${VAR} interpolation for Gemini CLI (it supports it)
+          mcpServers[name] = this.interpolate(registry.mcpServers[name], env);
+        }
+      }
+    }
+
+    // Add custom mcpServers
+    if (mergedConfig.mcpServers) {
+      for (const [name, config] of Object.entries(mergedConfig.mcpServers)) {
+        if (name.startsWith('_')) continue;
+        mcpServers[name] = this.interpolate(config, env);
+      }
+    }
+
+    // Expand ~ in output path
+    const outputPath = paths.globalConfig.replace(/^~/, process.env.HOME || '');
+
+    // Ensure directory exists
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Load existing settings.json and merge (preserve other keys)
+    let existingSettings = {};
+    if (fs.existsSync(outputPath)) {
+      try {
+        existingSettings = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+      } catch (e) {
+        // If corrupt, start fresh
+        existingSettings = {};
+      }
+    }
+
+    // Merge mcpServers into existing settings
+    const output = {
+      ...existingSettings,
+      mcpServers
+    };
+
+    this.saveJson(outputPath, output);
+
+    const count = Object.keys(mcpServers).length;
+    console.log(`✓ Generated ${outputPath} (Gemini CLI)`);
+    console.log(`  └─ ${count} MCP(s): ${Object.keys(mcpServers).join(', ')}`);
+
+    return true;
+  }
+
+  /**
+   * Detect which AI coding tools are installed
+   */
+  detectInstalledTools() {
+    const homeDir = process.env.HOME || '';
+    const results = {};
+
+    // Check Claude Code - look for claude command or ~/.claude directory
+    try {
+      execSync('which claude', { stdio: 'ignore' });
+      results.claude = { installed: true, method: 'command' };
+    } catch {
+      results.claude = {
+        installed: fs.existsSync(path.join(homeDir, '.claude')),
+        method: 'directory'
+      };
+    }
+
+    // Check Gemini CLI - look for gemini command or ~/.gemini directory
+    try {
+      execSync('which gemini', { stdio: 'ignore' });
+      results.gemini = { installed: true, method: 'command' };
+    } catch {
+      results.gemini = {
+        installed: fs.existsSync(path.join(homeDir, '.gemini')),
+        method: 'directory'
+      };
+    }
+
+    // Check Antigravity - look for ~/.gemini/antigravity directory
+    results.antigravity = {
+      installed: fs.existsSync(path.join(homeDir, '.gemini', 'antigravity')),
+      method: 'directory'
+    };
+
+    return results;
+  }
+
+  /**
+   * Get tool paths configuration
+   */
+  getToolPaths() {
+    return TOOL_PATHS;
+  }
+
+  /**
    * Apply config for multiple tools based on preferences
    */
   applyForTools(projectDir = null, tools = ['claude']) {
@@ -616,6 +772,8 @@ class ClaudeConfigManager {
     for (const tool of tools) {
       if (tool === 'claude') {
         results.claude = this.apply(projectDir);
+      } else if (tool === 'gemini') {
+        results.gemini = this.applyForGemini(projectDir);
       } else if (tool === 'antigravity') {
         results.antigravity = this.applyForAntigravity(projectDir);
       }

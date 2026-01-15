@@ -14,8 +14,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const TOOLS = {
-  claude: { name: 'Claude Code', folder: '.claude', color: 'text-orange-600', bg: 'bg-orange-50' },
-  antigravity: { name: 'Antigravity', folder: '.agent', color: 'text-blue-600', bg: 'bg-blue-50' },
+  claude: { name: 'Claude Code', folder: '.claude', color: 'text-orange-600', bg: 'bg-orange-50', darkBg: 'dark:bg-orange-950/30' },
+  gemini: { name: 'Gemini CLI', folder: '.gemini', color: 'text-blue-600', bg: 'bg-blue-50', darkBg: 'dark:bg-blue-950/30' },
+  antigravity: { name: 'Antigravity', folder: '.agent', color: 'text-purple-600', bg: 'bg-purple-50', darkBg: 'dark:bg-purple-950/30' },
 };
 
 export default function SyncDialog({ open, onOpenChange, projectDir, onSynced }) {
@@ -157,9 +158,15 @@ export default function SyncDialog({ open, onOpenChange, projectDir, onSynced })
                       Claude Code
                     </span>
                   </SelectItem>
-                  <SelectItem value="antigravity">
+                  <SelectItem value="gemini">
                     <span className="flex items-center gap-2">
                       <Sparkles className="w-3 h-3 text-blue-500" />
+                      Gemini CLI
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="antigravity">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-3 h-3 text-purple-500" />
                       Antigravity
                     </span>
                   </SelectItem>
@@ -190,9 +197,15 @@ export default function SyncDialog({ open, onOpenChange, projectDir, onSynced })
                       Claude Code
                     </span>
                   </SelectItem>
-                  <SelectItem value="antigravity">
+                  <SelectItem value="gemini">
                     <span className="flex items-center gap-2">
                       <Sparkles className="w-3 h-3 text-blue-500" />
+                      Gemini CLI
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="antigravity">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-3 h-3 text-purple-500" />
                       Antigravity
                     </span>
                   </SelectItem>

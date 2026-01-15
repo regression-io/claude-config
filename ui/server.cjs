@@ -704,6 +704,13 @@ class ConfigUIServer {
         }
         break;
 
+      // AI Tool detection and configuration
+      case '/api/tools':
+        if (req.method === 'GET') {
+          return this.json(res, this.getToolsInfo());
+        }
+        break;
+
       // Directory browser
       case '/api/browse':
         if (req.method === 'POST') {
@@ -772,6 +779,34 @@ class ConfigUIServer {
       label: c.dir === process.env.HOME ? '~' : path.relative(this.projectDir, c.dir) || '.',
       configPath: c.configPath
     }));
+  }
+
+  /**
+   * Get information about available AI coding tools
+   */
+  getToolsInfo() {
+    const toolPaths = this.manager.getToolPaths();
+    const detected = this.manager.detectInstalledTools();
+
+    // Get enabled tools from config
+    const enabledTools = this.config.enabledTools || ['claude'];
+
+    return {
+      tools: Object.entries(toolPaths).map(([id, config]) => ({
+        id,
+        name: config.name,
+        icon: config.icon,
+        color: config.color,
+        globalConfig: config.globalConfig,
+        projectFolder: config.projectFolder,
+        projectRules: config.projectRules,
+        projectInstructions: config.projectInstructions,
+        supportsEnvInterpolation: config.supportsEnvInterpolation,
+        detected: detected[id] || { installed: false },
+        enabled: enabledTools.includes(id)
+      })),
+      enabledTools
+    };
   }
 
   /**
@@ -1593,6 +1628,7 @@ class ConfigUIServer {
       const dir = c.dir;
       const claudeDir = path.join(dir, '.claude');
       const agentDir = path.join(dir, '.agent');
+      const geminiDir = path.join(dir, '.gemini');
       // Use actual path with ~ for home
       let label = dir;
       if (dir === home) {
@@ -1605,10 +1641,13 @@ class ConfigUIServer {
         label,
         claudePath: claudeDir,
         agentPath: agentDir,
+        geminiPath: geminiDir,
         exists: fs.existsSync(claudeDir),
         agentExists: fs.existsSync(agentDir),
+        geminiExists: fs.existsSync(geminiDir),
         files: [],
-        agentFiles: []
+        agentFiles: [],
+        geminiFiles: []
       };
 
       // Scan .claude folder
@@ -1731,6 +1770,54 @@ class ConfigUIServer {
               path: agentRulesDir,
               type: 'folder',
               children: rules
+            });
+          }
+        }
+      }
+
+      // Scan .gemini folder (Gemini CLI)
+      if (folder.geminiExists) {
+        // Check for settings.json (contains mcpServers for Gemini CLI)
+        const geminiSettingsPath = path.join(geminiDir, 'settings.json');
+        if (fs.existsSync(geminiSettingsPath)) {
+          const content = this.manager.loadJson(geminiSettingsPath) || {};
+          folder.geminiFiles.push({
+            name: 'settings.json',
+            path: geminiSettingsPath,
+            type: 'settings',
+            size: fs.statSync(geminiSettingsPath).size,
+            mcpCount: Object.keys(content.mcpServers || {}).length
+          });
+        }
+
+        // Check for GEMINI.md inside .gemini folder
+        const geminiMdPath = path.join(geminiDir, 'GEMINI.md');
+        if (fs.existsSync(geminiMdPath)) {
+          folder.geminiFiles.push({
+            name: 'GEMINI.md',
+            path: geminiMdPath,
+            type: 'geminimd',
+            size: fs.statSync(geminiMdPath).size
+          });
+        }
+
+        // Check for commands folder (Gemini CLI uses TOML)
+        const geminiCommandsDir = path.join(geminiDir, 'commands');
+        if (fs.existsSync(geminiCommandsDir)) {
+          const commands = fs.readdirSync(geminiCommandsDir)
+            .filter(f => f.endsWith('.toml') || f.endsWith('.md'))
+            .map(f => ({
+              name: f,
+              path: path.join(geminiCommandsDir, f),
+              type: 'command',
+              size: fs.statSync(path.join(geminiCommandsDir, f)).size
+            }));
+          if (commands.length > 0) {
+            folder.geminiFiles.push({
+              name: 'commands',
+              path: geminiCommandsDir,
+              type: 'folder',
+              children: commands
             });
           }
         }
