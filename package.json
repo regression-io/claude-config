@@ -1,6 +1,6 @@
 {
   "name": "@regression-io/claude-config",
-  "version": "0.14.18",
+  "version": "0.14.19",
   "description": "Configuration management UI for Claude Code - manage MCPs, rules, commands, memory, and .claude folders",
   "author": "regression.io",
   "main": "config-loader.js",
@@ -20,7 +20,8 @@
     "build:ci": "cd ui && npm install && npm run build",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "release": "./scripts/release.sh"
   },
   "keywords": [
     "claude",
