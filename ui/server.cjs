@@ -1872,14 +1872,32 @@ class ConfigUIServer {
       folders.push(folder);
     }
 
-    // Also add all sub-projects
+    // Also add all sub-projects (even unconfigured ones)
     const subprojects = this.getSubprojects();
     for (const sub of subprojects) {
-      const subFolder = this.scanFolderForExplorer(sub.dir, sub.name);
-      if (subFolder) {
-        subFolder.isSubproject = true;
-        folders.push(subFolder);
+      let subFolder = this.scanFolderForExplorer(sub.dir, sub.name);
+
+      // If no config folders exist, still show the sub-project (so user can init it)
+      if (!subFolder) {
+        subFolder = {
+          dir: sub.dir,
+          label: sub.name,
+          claudePath: path.join(sub.dir, '.claude'),
+          agentPath: path.join(sub.dir, '.agent'),
+          geminiPath: path.join(sub.dir, '.gemini'),
+          exists: false,
+          agentExists: false,
+          geminiExists: false,
+          files: [],
+          agentFiles: [],
+          geminiFiles: []
+        };
       }
+
+      subFolder.isSubproject = true;
+      subFolder.hasConfig = sub.hasConfig;
+      subFolder.mcpCount = sub.mcpCount || 0;
+      folders.push(subFolder);
     }
 
     return folders;
