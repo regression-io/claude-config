@@ -1842,7 +1842,11 @@ if (require.main === module) {
   const port = parseInt(args.find(a => a.startsWith('--port='))?.split('=')[1] || '3333');
   const dir = args.find(a => !a.startsWith('--')) || process.cwd();
 
-  const server = new ConfigUIServer(port, dir);
+  // Create manager instance when running standalone
+  const ClaudeConfigManager = require('../config-loader.js');
+  const manager = new ClaudeConfigManager();
+
+  const server = new ConfigUIServer(port, dir, manager);
   server.start();
 }
 
