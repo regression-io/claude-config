@@ -37,7 +37,9 @@ const docSections = [
       { id: 'claude-folders', title: '.claude Folders' },
       { id: 'rules', title: 'Rules' },
       { id: 'commands', title: 'Commands' },
+      { id: 'workflows', title: 'Workflows' },
       { id: 'hierarchy', title: 'Configuration Hierarchy' },
+      { id: 'subprojects', title: 'Sub-Projects' },
     ]
   },
   {
@@ -181,6 +183,20 @@ Use pre-built templates to quickly set up rules for your project type:
 - **react-ts** - React with TypeScript
 - **python-cli** - Python CLI tools
 - And more...
+
+### 6. Install as App (Optional)
+
+Claude Config is a PWA (Progressive Web App). Install it to your taskbar:
+
+**Chrome/Edge:** Click the install icon in the address bar
+**Safari:** Share → Add to Dock
+
+### 7. Theme
+
+Use the theme toggle in the header to switch between:
+- **Light** - Light mode
+- **Dark** - Dark mode
+- **Auto** - Follow system preference
     `
   },
   'updating': {
@@ -291,6 +307,8 @@ your-project/
 │   ├── commands/       # Command files (*.md)
 │   │   ├── review.md
 │   │   └── test.md
+│   ├── workflows/      # Workflow files (*.md)
+│   │   └── deploy.md
 │   └── memory/         # Project memory (optional)
 │       ├── context.md
 │       └── patterns.md
@@ -410,6 +428,93 @@ Provide specific suggestions with code examples.
 In Claude Code, use \`/command-name\` to invoke a command.
     `
   },
+  'workflows': {
+    title: 'Workflows',
+    content: `
+## Workflows
+
+Workflows are markdown files that define multi-step processes or cross-repository operations.
+
+### Location
+
+Workflows are stored in \`.claude/workflows/\` in your project root.
+
+### Creating Workflows
+
+1. Navigate to a \`.claude\` folder in the Project Explorer
+2. Click the "+" button and select "New Workflow"
+3. Enter a name (e.g., "deploy-all")
+
+### Workflow Content
+
+Workflows typically include:
+- Step-by-step instructions
+- Cross-repository coordination
+- Environment setup
+- Deployment processes
+
+### Example Workflow
+
+\`\`\`markdown
+# Deploy All Services
+
+## Steps
+
+1. Build auth-service first
+2. Then build api-gateway
+3. Run integration tests
+4. Deploy to staging
+5. Deploy to production
+\`\`\`
+
+### Use Cases
+
+- Multi-repo deployments
+- Complex build processes
+- Onboarding procedures
+- Release workflows
+    `
+  },
+  'subprojects': {
+    title: 'Sub-Projects',
+    content: `
+## Sub-Projects
+
+Sub-projects are nested git repositories within your main project (monorepos, workspaces).
+
+### Detection
+
+Sub-projects are automatically detected by scanning for \`.git\` directories within your project.
+
+### Sub-Projects View
+
+Access via **Sub-Projects** in the sidebar (only appears if sub-projects exist).
+
+The view shows:
+- All detected sub-projects
+- Which have \`.claude\` folders configured
+- MCP count per sub-project
+
+### Managing Sub-Projects
+
+**Initialize .claude folder:**
+Click the folder+ icon on a sub-project without configuration.
+
+**Delete .claude folder:**
+Click the trash icon (with confirmation) to remove configuration.
+
+**Switch to sub-project:**
+Click a sub-project card to switch context and manage it in Project Explorer.
+
+### Sticky Navigation
+
+When inside a sub-project, the Sub-Projects menu remains visible showing all sub-projects from the root project. Use "Back to Root" to return.
+
+### Configuration Inheritance
+
+Sub-projects inherit configuration from parent directories. Each sub-project can have its own \`.claude\` folder that extends the parent configuration.
+    `
+  },
   'hierarchy': {
     title: 'Configuration Hierarchy',
     content: `
@@ -479,12 +584,46 @@ MCPs are configured in \`.claude/mcps.json\`:
     content: `
 ## Adding MCPs
 
-### Via UI
+### Via UI - Registry
 
 1. Go to **MCP Registry** in the sidebar
-2. Search for an MCP by name
-3. Click "Add" to add it to your configuration
-4. Configure any required settings
+2. Click **Add MCP** button
+3. Paste JSON configuration:
+
+\`\`\`json
+{
+  "my-mcp": {
+    "command": "npx",
+    "args": ["-y", "@example/mcp-server"],
+    "env": {
+      "API_KEY": "\${API_KEY}"
+    }
+  }
+}
+\`\`\`
+
+4. Click "Add to Registry"
+
+### Via UI - Config Editor
+
+1. Go to **Project Explorer**
+2. Select an \`mcps.json\` file
+3. Click **Add MCP** in the editor header
+4. Paste JSON to add inline MCP to that config level
+
+### Accepted JSON Formats
+
+Both formats work:
+
+**Simple format:**
+\`\`\`json
+{ "name": { "command": "...", "args": [...] } }
+\`\`\`
+
+**Full format:**
+\`\`\`json
+{ "mcpServers": { "name": { "command": "...", "args": [...] } } }
+\`\`\`
 
 ### Via CLI
 
@@ -492,24 +631,9 @@ MCPs are configured in \`.claude/mcps.json\`:
 claude-config add filesystem github postgres
 \`\`\`
 
-### From npm
+### From Search Results
 
-MCPs published to npm can be added:
-
-\`\`\`json
-{
-  "mcpServers": {
-    "my-mcp": {
-      "command": "npx",
-      "args": ["-y", "some-mcp-package"]
-    }
-  }
-}
-\`\`\`
-
-### Custom MCPs
-
-You can add MCPs from local directories or custom servers by specifying the full command and arguments.
+Search GitHub or npm in the Registry view. Click "Add" to pre-fill the JSON with suggested configuration.
     `
   },
   'configuring-mcps': {
