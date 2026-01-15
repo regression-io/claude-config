@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const VERSION = '0.21.2';
+const VERSION = '0.21.4';
 
 // Tool-specific path configurations
 const TOOL_PATHS = {
@@ -43,11 +43,13 @@ const TOOL_PATHS = {
     color: 'blue',
     globalConfig: '~/.gemini/settings.json', // MCP config is merged into settings.json under mcpServers key
     globalSettings: '~/.gemini/settings.json',
+    globalMcpConfig: '~/.gemini/mcps.json', // Source config for MCPs (like Claude's)
     projectFolder: '.gemini',
+    projectConfig: '.gemini/mcps.json', // Project-level MCP config
     projectRules: '.gemini',
     projectCommands: '.gemini/commands', // Uses TOML format
     projectInstructions: 'GEMINI.md',
-    outputFile: '.gemini/settings.json', // Project-level settings
+    outputFile: '~/.gemini/settings.json', // Output merged into global settings
     supportsEnvInterpolation: true, // Gemini CLI likely supports ${VAR}
     mergeIntoSettings: true, // MCP config is merged into settings.json, not standalone
   },
@@ -56,11 +58,13 @@ const TOOL_PATHS = {
     icon: 'rocket',
     color: 'purple',
     globalConfig: '~/.gemini/antigravity/mcp_config.json',
+    globalMcpConfig: '~/.gemini/antigravity/mcps.json', // Source config for MCPs
     globalRules: '~/.gemini/GEMINI.md',
     projectFolder: '.agent',
+    projectConfig: '.agent/mcps.json', // Project-level MCP config
     projectRules: '.agent/rules',
     projectInstructions: 'GEMINI.md',
-    outputFile: null, // Writes directly to globalConfig
+    outputFile: '~/.gemini/antigravity/mcp_config.json', // Output to global config
     supportsEnvInterpolation: false, // Must resolve to actual values
   },
 };
@@ -553,9 +557,14 @@ class ClaudeConfigManager {
   /**
    * Generate MCP config for Antigravity
    */
+  /**
+   * Generate MCP config for Antigravity
+   * Reads from .agent/mcps.json (NOT .claude/mcps.json)
+   */
   applyForAntigravity(projectDir = null) {
     const dir = projectDir || this.findProjectRoot() || process.cwd();
     const paths = TOOL_PATHS.antigravity;
+    const homeDir = process.env.HOME || '';
 
     const registry = this.loadJson(this.registryPath);
     if (!registry) {
@@ -563,12 +572,14 @@ class ClaudeConfigManager {
       return false;
     }
 
-    // Find and load all configs in hierarchy (from .claude folders)
-    const configLocations = this.findAllConfigs(dir);
+    // Find and load all configs in hierarchy (from .agent folders)
+    const configLocations = this.findAllConfigsForTool('antigravity', dir);
 
     if (configLocations.length === 0) {
-      console.error(`No .claude/mcps.json found in ${dir} or parent directories`);
-      return false;
+      // No Antigravity-specific config found - skip silently
+      console.log(`  ℹ No .agent/mcps.json found - skipping Antigravity`);
+      console.log(`    Create one with: mkdir -p .agent && echo '{"include":["filesystem"]}' > .agent/mcps.json`);
+      return true; // Not an error, just no config
     }
 
     // Load all configs and merge
@@ -578,13 +589,19 @@ class ClaudeConfigManager {
     }));
     const mergedConfig = this.mergeConfigs(loadedConfigs);
 
-    // Collect env vars from all levels
-    const globalEnvPath = path.join(path.dirname(this.registryPath), '.env');
-    let env = this.loadEnvFile(globalEnvPath);
+    // Collect env vars from Antigravity-specific .env files
+    let env = {};
 
+    // Global env from ~/.gemini/antigravity/.env
+    const globalEnvPath = path.join(homeDir, '.gemini', 'antigravity', '.env');
+    env = { ...env, ...this.loadEnvFile(globalEnvPath) };
+
+    // Project-level env files
     for (const { dir: d } of configLocations) {
-      const envPath = path.join(d, '.claude', '.env');
-      env = { ...env, ...this.loadEnvFile(envPath) };
+      if (d !== homeDir) {
+        const envPath = path.join(d, '.agent', '.env');
+        env = { ...env, ...this.loadEnvFile(envPath) };
+      }
     }
 
     const output = { mcpServers: {} };
@@ -608,7 +625,7 @@ class ClaudeConfigManager {
     }
 
     // Expand ~ in output path
-    const outputPath = paths.globalConfig.replace(/^~/, process.env.HOME || '');
+    const outputPath = paths.outputFile.replace(/^~/, homeDir);
 
     // Ensure directory exists
     const outputDir = path.dirname(outputPath);
@@ -626,12 +643,58 @@ class ClaudeConfigManager {
   }
 
   /**
+   * Find all MCP configs for a specific tool in hierarchy
+   * Similar to findAllConfigs but uses tool-specific folder paths
+   */
+  findAllConfigsForTool(toolId, startDir = null) {
+    const tool = TOOL_PATHS[toolId];
+    if (!tool) return [];
+
+    const dir = startDir || this.findProjectRoot() || process.cwd();
+    const homeDir = process.env.HOME || '';
+    const configs = [];
+
+    // Walk up from project to find project-level configs
+    let currentDir = dir;
+    const root = path.parse(currentDir).root;
+
+    while (currentDir && currentDir !== root && currentDir !== homeDir) {
+      const configPath = path.join(currentDir, tool.projectConfig || `${tool.projectFolder}/mcps.json`);
+      if (fs.existsSync(configPath)) {
+        configs.push({
+          dir: currentDir,
+          configPath,
+          type: 'project'
+        });
+      }
+      currentDir = path.dirname(currentDir);
+    }
+
+    // Check for global config
+    if (tool.globalMcpConfig) {
+      const globalPath = tool.globalMcpConfig.replace(/^~/, homeDir);
+      if (fs.existsSync(globalPath)) {
+        configs.push({
+          dir: homeDir,
+          configPath: globalPath,
+          type: 'global'
+        });
+      }
+    }
+
+    // Reverse so global is first, then parent dirs, then project dir
+    return configs.reverse();
+  }
+
+  /**
    * Generate MCP config for Gemini CLI
    * Gemini CLI stores MCP config inside ~/.gemini/settings.json under mcpServers key
+   * Reads from .gemini/mcps.json (NOT .claude/mcps.json)
    */
   applyForGemini(projectDir = null) {
     const dir = projectDir || this.findProjectRoot() || process.cwd();
     const paths = TOOL_PATHS.gemini;
+    const homeDir = process.env.HOME || '';
 
     const registry = this.loadJson(this.registryPath);
     if (!registry) {
@@ -639,12 +702,14 @@ class ClaudeConfigManager {
       return false;
     }
 
-    // Find and load all configs in hierarchy (from .claude folders)
-    const configLocations = this.findAllConfigs(dir);
+    // Find and load all configs in hierarchy (from .gemini folders)
+    const configLocations = this.findAllConfigsForTool('gemini', dir);
 
     if (configLocations.length === 0) {
-      console.error(`No .claude/mcps.json found in ${dir} or parent directories`);
-      return false;
+      // No Gemini-specific config found - skip silently or create empty
+      console.log(`  ℹ No .gemini/mcps.json found - skipping Gemini CLI`);
+      console.log(`    Create one with: mkdir -p .gemini && echo '{"include":["filesystem"]}' > .gemini/mcps.json`);
+      return true; // Not an error, just no config
     }
 
     // Load all configs and merge
@@ -654,13 +719,19 @@ class ClaudeConfigManager {
     }));
     const mergedConfig = this.mergeConfigs(loadedConfigs);
 
-    // Collect env vars from all levels
-    const globalEnvPath = path.join(path.dirname(this.registryPath), '.env');
-    let env = this.loadEnvFile(globalEnvPath);
+    // Collect env vars from Gemini-specific .env files
+    let env = {};
 
+    // Global env from ~/.gemini/.env
+    const globalEnvPath = path.join(homeDir, '.gemini', '.env');
+    env = { ...env, ...this.loadEnvFile(globalEnvPath) };
+
+    // Project-level env files
     for (const { dir: d } of configLocations) {
-      const envPath = path.join(d, '.claude', '.env');
-      env = { ...env, ...this.loadEnvFile(envPath) };
+      if (d !== homeDir) {
+        const envPath = path.join(d, '.gemini', '.env');
+        env = { ...env, ...this.loadEnvFile(envPath) };
+      }
     }
 
     const mcpServers = {};
@@ -684,7 +755,7 @@ class ClaudeConfigManager {
     }
 
     // Expand ~ in output path
-    const outputPath = paths.globalConfig.replace(/^~/, process.env.HOME || '');
+    const outputPath = paths.outputFile.replace(/^~/, homeDir);
 
     // Ensure directory exists
     const outputDir = path.dirname(outputPath);
