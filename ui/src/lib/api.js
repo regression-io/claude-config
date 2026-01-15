@@ -352,6 +352,18 @@ export const api = {
     });
   },
 
+  // Gemini CLI settings.json
+  async getGeminiSettings() {
+    return request('/gemini-settings');
+  },
+
+  async saveGeminiSettings(settings) {
+    return request('/gemini-settings', {
+      method: 'PUT',
+      body: settings,
+    });
+  },
+
   // User preferences/config
   async getConfig() {
     return request('/preferences');

@@ -694,6 +694,16 @@ class ConfigUIServer {
         }
         break;
 
+      // Gemini CLI settings.json
+      case '/api/gemini-settings':
+        if (req.method === 'GET') {
+          return this.json(res, this.getGeminiSettings());
+        }
+        if (req.method === 'PUT') {
+          return this.json(res, this.saveGeminiSettings(body));
+        }
+        break;
+
       // User preferences (claude-config tool settings)
       case '/api/preferences':
         if (req.method === 'GET') {
@@ -2631,6 +2641,78 @@ class ConfigUIServer {
       if (permissions) {
         finalSettings.permissions = permissions;
       }
+
+      fs.writeFileSync(settingsPath, JSON.stringify(finalSettings, null, 2) + '\n', 'utf8');
+
+      return {
+        success: true,
+        path: settingsPath,
+        settings: finalSettings
+      };
+    } catch (e) {
+      return {
+        success: false,
+        error: e.message
+      };
+    }
+  }
+
+  /**
+   * Get Gemini CLI settings from ~/.gemini/settings.json
+   */
+  getGeminiSettings() {
+    const settingsPath = path.join(os.homedir(), '.gemini', 'settings.json');
+
+    try {
+      if (!fs.existsSync(settingsPath)) {
+        return {
+          path: settingsPath,
+          exists: false,
+          settings: {}
+        };
+      }
+
+      const content = fs.readFileSync(settingsPath, 'utf8');
+      const settings = JSON.parse(content);
+
+      return {
+        path: settingsPath,
+        exists: true,
+        settings
+      };
+    } catch (e) {
+      return {
+        path: settingsPath,
+        error: e.message
+      };
+    }
+  }
+
+  /**
+   * Save Gemini CLI settings to ~/.gemini/settings.json
+   */
+  saveGeminiSettings(body) {
+    const settingsPath = path.join(os.homedir(), '.gemini', 'settings.json');
+
+    try {
+      // Ensure .gemini directory exists
+      const geminiDir = path.dirname(settingsPath);
+      if (!fs.existsSync(geminiDir)) {
+        fs.mkdirSync(geminiDir, { recursive: true });
+      }
+
+      // Load existing settings if they exist (to preserve mcpServers)
+      let finalSettings = {};
+      if (fs.existsSync(settingsPath)) {
+        try {
+          finalSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+        } catch (e) {
+          finalSettings = {};
+        }
+      }
+
+      // Merge with new settings (preserves mcpServers which is managed separately)
+      finalSettings = { ...finalSettings, ...body };
 
       fs.writeFileSync(settingsPath, JSON.stringify(finalSettings, null, 2) + '\n', 'utf8');
 

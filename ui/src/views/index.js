@@ -1,5 +1,6 @@
 export { default as PreferencesView } from './PreferencesView';
 export { default as ClaudeSettingsView } from './ClaudeSettingsView';
+export { default as GeminiSettingsView } from './GeminiSettingsView';
 export { default as CreateMcpView } from './CreateMcpView';
 export { default as EnvView } from './EnvView';
 export { default as TemplatesView } from './TemplatesView';

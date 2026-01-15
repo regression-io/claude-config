@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Settings, Package, Layout, Lock, RefreshCw, Rocket,
+  Settings, Package, Layout, Lock, RefreshCw, Rocket, Terminal,
   Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen
 } from 'lucide-react';
 import FileExplorer from "@/components/FileExplorer";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import {
   PreferencesView,
   ClaudeSettingsView,
+  GeminiSettingsView,
   CreateMcpView,
   EnvView,
   TemplatesView,
@@ -34,6 +35,7 @@ const navItems = [
   { id: 'registry', label: 'MCP Registry', icon: Package, section: 'Configuration' },
   { id: 'memory', label: 'Memory', icon: Brain, section: 'Configuration' },
   { id: 'claude-settings', label: 'Claude Code', icon: Shield, section: 'Configuration' },
+  { id: 'gemini-settings', label: 'Gemini CLI', icon: Terminal, section: 'Configuration' },
   { id: 'templates', label: 'Templates', icon: Layout, section: 'Tools' },
   { id: 'env', label: 'Environment', icon: Lock, section: 'Tools' },
   { id: 'create-mcp', label: 'Create MCP', icon: Wand2, section: 'Developer' },
@@ -317,6 +319,8 @@ export default function Dashboard() {
         return <CreateMcpView project={project} />;
       case 'claude-settings':
         return <ClaudeSettingsView />;
+      case 'gemini-settings':
+        return <GeminiSettingsView />;
       case 'preferences':
         return <PreferencesView />;
       case 'projects':
