@@ -1318,6 +1318,25 @@ function formatMarkdown(text) {
     return `<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg overflow-x-auto my-4"><code class="text-sm">${escaped}</code></pre>`;
   });
 
+  // Process markdown tables (header | separator | rows)
+  result = result.replace(/(\|[^\n]+\|\n\|[-| :]+\|\n(?:\|[^\n]+\|\n?)+)/g, (tableMatch) => {
+    const lines = tableMatch.trim().split('\n');
+    if (lines.length < 2) return tableMatch;
+
+    const headerCells = lines[0].split('|').filter(c => c.trim()).map(c =>
+      `<th class="border border-border px-3 py-2 bg-muted font-semibold text-left">${c.trim()}</th>`
+    ).join('');
+
+    const bodyRows = lines.slice(2).map(line => {
+      const cells = line.split('|').filter(c => c.trim()).map(c =>
+        `<td class="border border-border px-3 py-2">${c.trim()}</td>`
+      ).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    return `<table class="w-full border-collapse border border-border my-4"><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+  });
+
   return result
     .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-6 mb-2 text-foreground">$1</h3>')
     .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-8 mb-4 text-foreground">$1</h2>')
@@ -1325,11 +1344,6 @@ function formatMarkdown(text) {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">$1</code>')
-    .replace(/^\| (.*) \|$/gim, (match, content) => {
-      const cells = content.split(' | ').map(c => `<td class="border border-border px-3 py-2">${c.trim()}</td>`).join('');
-      return `<tr>${cells}</tr>`;
-    })
-    .replace(/(<tr>.*<\/tr>\n?)+/g, '<table class="w-full border-collapse border border-border my-4">$&</table>')
     .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
     .replace(/(<li.*<\/li>\n?)+/g, '<ul class="list-disc my-2">$&</ul>')
     .replace(/^\d+\. (.*$)/gim, '<li class="ml-4">$1</li>')
