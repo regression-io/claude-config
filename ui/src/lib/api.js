@@ -259,6 +259,13 @@ export const api = {
     });
   },
 
+  async renameClaudeFile(oldPath, newName) {
+    return request('/claude-rename', {
+      method: 'POST',
+      body: { oldPath, newName },
+    });
+  },
+
   // Memory System
   async getMemory() {
     return request('/memory');

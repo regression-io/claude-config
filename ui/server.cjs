@@ -597,6 +597,12 @@ class ConfigUIServer {
         }
         break;
 
+      case '/api/claude-rename':
+        if (req.method === 'POST') {
+          return this.json(res, this.renameClaudeFile(body));
+        }
+        break;
+
       // Memory System
       case '/api/memory':
         return this.json(res, this.getMemory());
@@ -1654,6 +1660,30 @@ class ConfigUIServer {
 
     fs.writeFileSync(filePath, initialContent, 'utf8');
     return { success: true, path: filePath, content: initialContent };
+  }
+
+  /**
+   * Rename a .claude file (rule, command, etc.)
+   */
+  renameClaudeFile(body) {
+    const { oldPath, newName } = body;
+    if (!oldPath || !newName) {
+      return { error: 'oldPath and newName are required' };
+    }
+
+    if (!fs.existsSync(oldPath)) {
+      return { error: 'File not found', path: oldPath };
+    }
+
+    const dir = path.dirname(oldPath);
+    const newPath = path.join(dir, newName.endsWith('.md') ? newName : `${newName}.md`);
+
+    if (fs.existsSync(newPath)) {
+      return { error: 'A file with that name already exists', path: newPath };
+    }
+
+    fs.renameSync(oldPath, newPath);
+    return { success: true, oldPath, newPath };
   }
 
   /**

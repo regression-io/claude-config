@@ -693,6 +693,50 @@ function MoveCopyDialog({ open, onClose, item, intermediatePaths, onMove }) {
   );
 }
 
+// Rename Dialog Component
+function RenameDialog({ open, onClose, item, onRename }) {
+  const [newName, setNewName] = useState('');
+
+  useEffect(() => {
+    if (item?.name) {
+      setNewName(item.name.replace(/\.md$/, ''));
+    }
+  }, [item, open]);
+
+  const handleRename = () => {
+    if (!newName.trim()) {
+      toast.error('Please enter a name');
+      return;
+    }
+    onRename(item, newName.trim());
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rename {item?.type}</DialogTitle>
+        </DialogHeader>
+        <div>
+          <label className="text-sm font-medium">New name</label>
+          <Input
+            className="mt-1"
+            placeholder="new-name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+          />
+          <p className="text-xs text-gray-500 mt-1">.md extension will be added automatically</p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleRename}>Rename</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Create File Dialog Component
 function CreateFileDialog({ open, onClose, dir, type, onCreate }) {
   const [name, setName] = useState('');
@@ -757,6 +801,7 @@ export default function FileExplorer({ onRefresh }) {
   // Dialogs
   const [moveCopyDialog, setMoveCopyDialog] = useState({ open: false, item: null });
   const [createDialog, setCreateDialog] = useState({ open: false, dir: null, type: null });
+  const [renameDialog, setRenameDialog] = useState({ open: false, item: null });
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [contextMenu, setContextMenu] = useState({ x: 0, y: 0, item: null });
 
@@ -853,6 +898,23 @@ export default function FileExplorer({ onRefresh }) {
       loadData();
     } catch (error) {
       toast.error('Failed to create: ' + error.message);
+    }
+  };
+
+  const handleRename = async (item, newName) => {
+    try {
+      const result = await api.renameClaudeFile(item.path, newName);
+      if (result.success) {
+        toast.success('Renamed');
+        setRenameDialog({ open: false, item: null });
+        await loadData();
+        // Select the renamed file
+        setSelectedItem({ ...item, path: result.newPath, name: newName.endsWith('.md') ? newName : `${newName}.md` });
+      } else {
+        toast.error(result.error || 'Failed to rename');
+      }
+    } catch (error) {
+      toast.error('Failed to rename: ' + error.message);
     }
   };
 
@@ -1034,6 +1096,18 @@ export default function FileExplorer({ onRefresh }) {
             className="fixed z-50 bg-white rounded-md shadow-lg border py-1 min-w-[160px]"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
+            {(contextMenu.item?.type === 'rule' || contextMenu.item?.type === 'command') && (
+              <button
+                className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+                onClick={() => {
+                  setRenameDialog({ open: true, item: contextMenu.item });
+                  setContextMenu({ x: 0, y: 0, item: null });
+                }}
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Rename
+              </button>
+            )}
             <button
               className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
               onClick={() => {
@@ -1085,6 +1159,14 @@ export default function FileExplorer({ onRefresh }) {
         dir={createDialog.dir}
         type={createDialog.type}
         onCreate={doCreateFile}
+      />
+
+      {/* Rename Dialog */}
+      <RenameDialog
+        open={renameDialog.open}
+        onClose={() => setRenameDialog({ open: false, item: null })}
+        item={renameDialog.item}
+        onRename={handleRename}
       />
 
       {/* New .claude Folder Dialog */}
