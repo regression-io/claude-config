@@ -1007,9 +1007,9 @@ class ConfigUIServer {
   // ===========================================================================
 
   async checkForUpdates() {
-    // Get current installed version
+    // Get current installed version from the actual package location (parent of ui/)
     const installedVersion = this.getVersionFromFile(
-      path.join(this.manager.installDir, 'config-loader.js')
+      path.join(__dirname, '..', 'config-loader.js')
     );
 
     // Check npm for latest version
