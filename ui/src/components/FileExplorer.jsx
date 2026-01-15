@@ -351,10 +351,27 @@ function McpEditor({ content, parsed, onSave, registry }) {
                 <h3 className="text-sm font-medium mb-2">Inline MCPs</h3>
                 <div className="space-y-2">
                   {Object.entries(localConfig.mcpServers).map(([name, config]) => (
-                    <div key={name} className="p-2 rounded border bg-white">
+                    <div key={name} className="p-2 rounded border bg-white group">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{name}</span>
-                        <Badge variant="outline" className="text-xs">inline</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">inline</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              const { [name]: _, ...rest } = localConfig.mcpServers;
+                              const newConfig = { ...localConfig, mcpServers: rest };
+                              setLocalConfig(newConfig);
+                              setJsonText(JSON.stringify(newConfig, null, 2));
+                              setHasChanges(true);
+                              toast.success(`Removed ${name} - click Save to apply`);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 font-mono">
                         {config.command} {config.args?.join(' ')}
