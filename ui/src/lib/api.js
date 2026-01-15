@@ -273,6 +273,22 @@ export const api = {
     });
   },
 
+  // Batch init .claude folders for multiple directories
+  async initClaudeFolderBatch(dirs) {
+    return request('/init-claude-folder-batch', {
+      method: 'POST',
+      body: { dirs },
+    });
+  },
+
+  // Apply template to multiple projects
+  async applyTemplateToProjects(templateId, dirs) {
+    return request('/apply-template-batch', {
+      method: 'POST',
+      body: { templateId, dirs },
+    });
+  },
+
   // Tool Sync (Claude <-> Antigravity)
   async getSyncPreview(dir, source = 'claude', target = 'antigravity') {
     return request('/sync/preview', {

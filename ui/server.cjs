@@ -637,6 +637,18 @@ class ConfigUIServer {
         }
         break;
 
+      case '/api/init-claude-folder-batch':
+        if (req.method === 'POST') {
+          return this.json(res, this.initClaudeFolderBatch(body.dirs));
+        }
+        break;
+
+      case '/api/apply-template-batch':
+        if (req.method === 'POST') {
+          return this.json(res, this.applyTemplateBatch(body.templateId, body.dirs));
+        }
+        break;
+
       // Tool Sync (Claude <-> Antigravity)
       case '/api/sync/preview':
         if (req.method === 'POST') {
@@ -2084,6 +2096,141 @@ class ConfigUIServer {
     fs.rmSync(claudeDir, { recursive: true, force: true });
 
     return { success: true, dir: claudeDir };
+  }
+
+  /**
+   * Initialize .claude folders in multiple directories (batch)
+   */
+  initClaudeFolderBatch(dirs) {
+    if (!dirs || !Array.isArray(dirs) || dirs.length === 0) {
+      return { error: 'dirs array is required' };
+    }
+
+    const results = [];
+    let successCount = 0;
+
+    for (const dir of dirs) {
+      const result = this.initClaudeFolder(dir);
+      results.push({ dir, ...result });
+      if (result.success) {
+        successCount++;
+      }
+    }
+
+    return {
+      success: true,
+      count: successCount,
+      results
+    };
+  }
+
+  /**
+   * Apply a template to multiple projects (batch)
+   */
+  applyTemplateBatch(templateId, dirs) {
+    if (!templateId) {
+      return { error: 'templateId is required' };
+    }
+    if (!dirs || !Array.isArray(dirs) || dirs.length === 0) {
+      return { error: 'dirs array is required' };
+    }
+
+    // Load templates
+    const templates = this.getTemplates();
+    const template = templates.find(t => t.id === templateId);
+    if (!template) {
+      return { error: 'Template not found', templateId };
+    }
+
+    const results = [];
+    let successCount = 0;
+
+    for (const dir of dirs) {
+      // Ensure .claude folder exists
+      const absDir = path.resolve(dir.replace(/^~/, os.homedir()));
+      const claudeDir = path.join(absDir, '.claude');
+
+      if (!fs.existsSync(claudeDir)) {
+        fs.mkdirSync(claudeDir, { recursive: true });
+      }
+
+      try {
+        // Apply the template to this directory
+        const result = this.applyTemplateToDir(template, absDir);
+        results.push({ dir, success: true, ...result });
+        successCount++;
+      } catch (error) {
+        results.push({ dir, success: false, error: error.message });
+      }
+    }
+
+    return {
+      success: true,
+      count: successCount,
+      results
+    };
+  }
+
+  /**
+   * Apply a template to a single directory (helper)
+   */
+  applyTemplateToDir(template, absDir) {
+    const claudeDir = path.join(absDir, '.claude');
+
+    // Apply MCPs from template
+    if (template.mcps && template.mcps.length > 0) {
+      const mcpsPath = path.join(claudeDir, 'mcps.json');
+      let currentConfig = { include: [], mcpServers: {} };
+
+      if (fs.existsSync(mcpsPath)) {
+        try {
+          currentConfig = JSON.parse(fs.readFileSync(mcpsPath, 'utf-8'));
+        } catch (e) {
+          // Start fresh if parse fails
+        }
+      }
+
+      // Add template MCPs to include list
+      const include = new Set(currentConfig.include || []);
+      for (const mcpName of template.mcps) {
+        include.add(mcpName);
+      }
+      currentConfig.include = Array.from(include);
+
+      fs.writeFileSync(mcpsPath, JSON.stringify(currentConfig, null, 2));
+    }
+
+    // Apply rules from template
+    if (template.rules && template.rules.length > 0) {
+      const rulesDir = path.join(claudeDir, 'rules');
+      if (!fs.existsSync(rulesDir)) {
+        fs.mkdirSync(rulesDir, { recursive: true });
+      }
+
+      for (const rule of template.rules) {
+        const rulePath = path.join(rulesDir, rule.name);
+        if (!fs.existsSync(rulePath)) {
+          fs.writeFileSync(rulePath, rule.content);
+        }
+      }
+    }
+
+    // Apply commands from template
+    if (template.commands && template.commands.length > 0) {
+      const commandsDir = path.join(claudeDir, 'commands');
+      if (!fs.existsSync(commandsDir)) {
+        fs.mkdirSync(commandsDir, { recursive: true });
+      }
+
+      for (const command of template.commands) {
+        const commandPath = path.join(commandsDir, command.name);
+        if (!fs.existsSync(commandPath)) {
+          fs.writeFileSync(commandPath, command.content);
+        }
+      }
+    }
+
+    return { applied: true };
   }
 
   /**

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Folder, RefreshCw, ExternalLink, FolderPlus, Trash2, ArrowLeft, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Folder, RefreshCw, ExternalLink, FolderPlus, Trash2, ArrowLeft, Settings, Check, X, MoreVertical, FileStack, ChevronDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import {
@@ -15,13 +16,117 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function SubprojectsView({ project, rootProject, onRefresh }) {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, proj: null });
+  const [selectedProjects, setSelectedProjects] = useState(new Set());
+  const [templates, setTemplates] = useState([]);
+  const [applying, setApplying] = useState(false);
+
+  // Load templates for the apply dropdown
+  useEffect(() => {
+    api.getTemplates().then(setTemplates).catch(() => {});
+  }, []);
 
   // Use rootProject subprojects if available (sticky behavior)
   const subprojects = rootProject?.subprojects || project.subprojects || [];
   const isInSubproject = rootProject && project.dir !== rootProject.dir;
+
+  // Selection helpers
+  const isSelected = (dir) => selectedProjects.has(dir);
+  const toggleSelect = (dir) => {
+    setSelectedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(dir)) {
+        next.delete(dir);
+      } else {
+        next.add(dir);
+      }
+      return next;
+    });
+  };
+  const selectAll = () => {
+    setSelectedProjects(new Set(subprojects.map(p => p.dir)));
+  };
+  const clearSelection = () => {
+    setSelectedProjects(new Set());
+  };
+  const allSelected = subprojects.length > 0 && selectedProjects.size === subprojects.length;
+  const someSelected = selectedProjects.size > 0;
+
+  // Batch init handler
+  const handleInitBatch = async (dirs) => {
+    try {
+      const result = await api.initClaudeFolderBatch(dirs);
+      if (result.success) {
+        toast.success(`Created .claude folders in ${result.count} project${result.count !== 1 ? 's' : ''}`);
+        clearSelection();
+        onRefresh();
+      } else {
+        toast.error(result.error || 'Failed to init projects');
+      }
+    } catch (error) {
+      toast.error('Failed to init projects: ' + error.message);
+    }
+  };
+
+  // Init all unconfigured
+  const handleInitAllUnconfigured = async () => {
+    const unconfigured = subprojects.filter(p => !p.hasConfig).map(p => p.dir);
+    if (unconfigured.length === 0) {
+      toast.info('All sub-projects already have .claude folders');
+      return;
+    }
+    await handleInitBatch(unconfigured);
+  };
+
+  // Init selected
+  const handleInitSelected = async () => {
+    const dirs = Array.from(selectedProjects);
+    if (dirs.length === 0) return;
+    await handleInitBatch(dirs);
+  };
+
+  // Apply template to projects
+  const handleApplyTemplate = async (templateId, dirs) => {
+    setApplying(true);
+    try {
+      const result = await api.applyTemplateToProjects(templateId, dirs);
+      if (result.success) {
+        toast.success(`Applied template to ${result.count} project${result.count !== 1 ? 's' : ''}`);
+        clearSelection();
+        onRefresh();
+      } else {
+        toast.error(result.error || 'Failed to apply template');
+      }
+    } catch (error) {
+      toast.error('Failed to apply template: ' + error.message);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  // Apply template to selected
+  const handleApplyTemplateToSelected = async (templateId) => {
+    const dirs = Array.from(selectedProjects);
+    if (dirs.length === 0) return;
+    await handleApplyTemplate(templateId, dirs);
+  };
+
+  // Apply template to single project
+  const handleApplyTemplateToOne = async (templateId, dir) => {
+    await handleApplyTemplate(templateId, [dir]);
+  };
 
   const handleSwitchProject = async (dir) => {
     try {
@@ -80,14 +185,36 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
     <div className="space-y-6">
       <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
         <div className="p-5 border-b border-border flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Folder className="w-5 h-5 text-amber-500" />
-            Sub-Projects
-          </h2>
-          <Button variant="outline" size="sm" onClick={onRefresh}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Folder className="w-5 h-5 text-amber-500" />
+              Sub-Projects
+            </h2>
+            {subprojects.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                  className="data-[state=checked]:bg-primary"
+                />
+                <span className="text-sm text-muted-foreground">
+                  {someSelected ? `${selectedProjects.size} selected` : 'Select all'}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {subprojects.some(p => !p.hasConfig) && (
+              <Button variant="outline" size="sm" onClick={handleInitAllUnconfigured}>
+                <FolderPlus className="w-4 h-4 mr-2" />
+                Init All Unconfigured
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={onRefresh}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Current location info */}
@@ -121,74 +248,116 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {subprojects.map((proj, index) => {
             const isCurrentProject = proj.dir === project.dir;
+            const isChecked = isSelected(proj.dir);
             return (
               <motion.div
                 key={proj.name}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.05 }}
-                className={`bg-card rounded-lg border p-4 transition-all group ${
+                className={`bg-card rounded-lg border p-4 transition-all group relative ${
                   isCurrentProject
                     ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                    : 'border-border hover:border-primary/50 hover:shadow-md cursor-pointer'
+                    : isChecked
+                    ? 'border-primary/50 bg-primary/5'
+                    : 'border-border hover:border-primary/50 hover:shadow-md'
                 }`}
-                onClick={() => !isCurrentProject && handleSwitchProject(proj.dir)}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">{proj.name}</h3>
-                    {isCurrentProject && (
-                      <Badge variant="default" className="text-xs">Current</Badge>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    {proj.markers?.git && <span title="Git">🔀</span>}
-                    {proj.markers?.npm && <span title="NPM">📦</span>}
-                    {proj.markers?.python && <span title="Python">🐍</span>}
-                    {proj.markers?.claude && <span title="Claude Config">⚙️</span>}
-                  </div>
+                {/* Checkbox overlay */}
+                <div className="absolute top-3 left-3 z-10">
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={() => toggleSelect(proj.dir)}
+                    className="data-[state=checked]:bg-primary"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </div>
-                <code className="text-xs text-muted-foreground block mb-3">{proj.relativePath || proj.name}</code>
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className={proj.hasConfig
-                    ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30'
-                    : 'bg-muted text-muted-foreground border-border'
-                  }>
-                    {proj.hasConfig ? `✓ ${proj.mcpCount || 0} MCPs` : 'No config'}
-                  </Badge>
-                  <div className="flex gap-1">
-                    {!proj.hasConfig ? (
+
+                {/* Context Menu */}
+                <div className="absolute top-3 right-3 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100"
-                        onClick={(e) => handleInitClaudeFolder(proj, e)}
-                        title="Create .claude folder"
+                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <FolderPlus className="w-3.5 h-3.5" />
+                        <MoreVertical className="w-4 h-4" />
                       </Button>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100"
-                          onClick={(e) => { e.stopPropagation(); handleSwitchProject(proj.dir); }}
-                          title="Manage in Project Explorer"
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
-                          onClick={(e) => openDeleteDialog(proj, e)}
-                          title="Delete .claude folder"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      {templates.length > 0 && (
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <FileStack className="w-4 h-4 mr-2" />
+                            Apply Template
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {templates.map((template) => (
+                              <DropdownMenuItem
+                                key={template.id}
+                                onClick={() => handleApplyTemplateToOne(template.id, proj.dir)}
+                              >
+                                {template.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      )}
+                      {!proj.hasConfig && (
+                        <DropdownMenuItem onClick={() => handleInitClaudeFolder(proj, { stopPropagation: () => {} })}>
+                          <FolderPlus className="w-4 h-4 mr-2" />
+                          Init .claude folder
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => handleSwitchProject(proj.dir)}>
+                        <Settings className="w-4 h-4 mr-2" />
+                        Switch to project
+                      </DropdownMenuItem>
+                      {proj.hasConfig && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => openDeleteDialog(proj, { stopPropagation: () => {} })}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete .claude folder
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Card content - clickable area */}
+                <div
+                  className="cursor-pointer pl-8"
+                  onClick={() => !isCurrentProject && handleSwitchProject(proj.dir)}
+                >
+                  <div className="flex items-start justify-between mb-3 pr-8">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-foreground">{proj.name}</h3>
+                      {isCurrentProject && (
+                        <Badge variant="default" className="text-xs">Current</Badge>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      {proj.markers?.git && <span title="Git">🔀</span>}
+                      {proj.markers?.npm && <span title="NPM">📦</span>}
+                      {proj.markers?.python && <span title="Python">🐍</span>}
+                      {proj.markers?.claude && <span title="Claude Config">⚙️</span>}
+                    </div>
+                  </div>
+                  <code className="text-xs text-muted-foreground block mb-3">{proj.relativePath || proj.name}</code>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className={proj.hasConfig
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30'
+                      : 'bg-muted text-muted-foreground border-border'
+                    }>
+                      {proj.hasConfig ? `✓ ${proj.mcpCount || 0} MCPs` : 'No config'}
+                    </Badge>
                   </div>
                 </div>
               </motion.div>
@@ -200,6 +369,53 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
             </div>
           )}
         </div>
+
+        {/* Floating Action Bar - shows when items are selected */}
+        <AnimatePresence>
+          {someSelected && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+            >
+              <div className="bg-card border border-border rounded-lg shadow-xl px-4 py-3 flex items-center gap-3">
+                <span className="text-sm font-medium text-foreground">
+                  {selectedProjects.size} selected
+                </span>
+                <div className="h-4 w-px bg-border" />
+                {templates.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="default" disabled={applying}>
+                        <FileStack className="w-4 h-4 mr-2" />
+                        Apply Template
+                        <ChevronDown className="w-3 h-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {templates.map((template) => (
+                        <DropdownMenuItem
+                          key={template.id}
+                          onClick={() => handleApplyTemplateToSelected(template.id)}
+                        >
+                          {template.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <Button size="sm" variant="outline" onClick={handleInitSelected}>
+                  <FolderPlus className="w-4 h-4 mr-2" />
+                  Init .claude
+                </Button>
+                <Button size="sm" variant="ghost" onClick={clearSelection}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Delete Confirmation Dialog */}
