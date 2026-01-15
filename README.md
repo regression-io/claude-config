@@ -13,6 +13,14 @@ Or from GitHub:
 npm install -g github:regression-io/claude-config
 ```
 
+## Updating
+
+```bash
+npm update -g @regression-io/claude-config
+```
+
+The Web UI automatically detects when updates are available and shows a notification in the Preferences page.
+
 ## Quick Start
 
 ```bash

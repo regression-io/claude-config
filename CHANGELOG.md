@@ -5,7 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.0] - 2025-01-15
+## [0.15.0] - 2026-01-15
+
+### Added
+
+- **npm Update Detection** - Automatic check for updates from npm registry
+  - Shows update notification in UI when new version available
+  - One-click update via `npm update -g`
+  - Version displayed in Preferences page
+
+- **Auto-Release Pipeline**
+  - GitHub Actions workflow for automatic npm publishing on version tags
+  - Git hooks for automatic version bump, tag, and push on every commit
+  - `./scripts/release.sh "message"` for manual releases with `--minor` or `--major` flags
+
+### Changed
+
+- **Daemon Mode Default** - `claude-config ui` now runs as daemon by default
+  - Use `--foreground` or `-f` to run in foreground
+  - Daemon spawns properly detached process
+
+- **Project Selector** - Always shows project selector on initial UI load
+  - Renamed "File Explorer" to "Project Explorer"
+  - Reordered nav: All Projects first
+
+- **npm Package Structure** - Clean install from npm registry
+  - Removed old manual installation method
+  - User config stored in `~/.claude-config/` (projects.json, config.json)
+  - Package code in npm global location
+
+### Fixed
+
+- Daemon mode not starting server (was spawning another daemon infinitely)
+- Version detection looking in wrong directory
+- Missing `https` require in npm version check
+
+---
+
+## [0.14.0] - 2026-01-15
 
 ### Added
 
