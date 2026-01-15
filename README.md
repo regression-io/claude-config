@@ -191,12 +191,46 @@ When you run `claude-config ui`:
 
 - **File Explorer** - Browse/edit all .claude folders in hierarchy
 - **MCP Registry** - Search GitHub/npm, add/edit/delete MCPs
+- **Claude Code Settings** - Visual editor for `~/.claude/settings.json`
+  - Permissions (allow/ask/deny rules)
+  - Model selection
+  - Behavior settings
+  - Hooks and advanced options
 - **Memory System** - Manage preferences, corrections, patterns, decisions
 - **Templates** - Apply rule templates to projects
+- **Preferences** - Configure claude-config tool settings
+- **One-Click Updates** - Update badge appears when new version available
 
-## Configuration File
+## Claude Code Settings
 
-User settings stored in `~/.claude/config.json`:
+The Web UI provides a visual editor for `~/.claude/settings.json`:
+
+### Permissions
+Configure what Claude Code can do automatically:
+- **Allow** - Tools that run without asking
+- **Ask** - Tools that require confirmation
+- **Deny** - Tools that are blocked
+
+Pattern examples:
+```
+Bash(npm run build)      # Specific command
+Bash(npm:*)              # Prefix match (npm anything)
+Read(**)                 # All file reads
+Edit(src/**)             # Edit files in src/
+mcp__github__*           # All GitHub MCP tools
+```
+
+### Model Selection
+Choose your preferred Claude model (Sonnet 4, Opus 4.5, etc.)
+
+### Behavior
+- Auto-accept edits
+- Verbose mode
+- Enable/disable MCP servers
+
+## Preferences
+
+User settings stored in `~/.claude-config/config.json`:
 
 ```json
 {

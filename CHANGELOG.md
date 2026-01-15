@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2025-01-15
+
+### Added
+
+- **Claude Code Settings Editor** - Visual editor for `~/.claude/settings.json`
+  - Permissions tab with allow/ask/deny rule management
+  - Model selection with all Claude models
+  - Behavior settings (auto-accept edits, verbose mode)
+  - Advanced settings (API base URL, environment variables, hooks)
+  - Import/export permissions as JSON
+
+- **One-Click Updates** - Update badge in header when new version available
+  - Click to update and auto-reload
+  - No manual server restart needed for UI changes
+
+- **Path Picker** - Directory/file browser for path inputs in Preferences
+  - Browse button on MCP Tools Directory and Registry Path settings
+  - Navigate directories with home button shortcut
+
+- **Separated Settings Views**
+  - "Claude Code" menu item for `~/.claude/settings.json` (permissions, model, behavior)
+  - "Preferences" menu item for claude-config tool settings (directories, UI options)
+
+### Changed
+
+- **Refactored Dashboard** - Split 3400+ line file into modular view components
+  - Extracted: PreferencesView, ClaudeSettingsView, MemoryView, RegistryView, etc.
+  - Cleaner codebase, easier maintenance
+
+- **Version Management** - Auto-bump patch version on build
+  - `install.sh --update` now runs build automatically
+  - Version synced across package.json, config-loader.js, ui/package.json
+
+### Fixed
+
+- Preferences API endpoint collision (renamed to `/api/preferences`)
+- JSON placeholder formatting in Hooks and Custom Settings textareas
+- TooltipProvider missing in PermissionsEditor components
+
+---
+
 ## [1.0.0] - 2025-01-14
 
 ### Added
