@@ -86,12 +86,12 @@ claude-config registry-remove <name>         # Remove MCP from registry
 claude-config ui                    # Start UI on port 3333
 claude-config ui --port 8080        # Custom port
 claude-config ui /path/to/project   # Specific project directory
-claude-config ui --daemon           # Run as background daemon
+claude-config ui --foreground       # Run in foreground (blocking)
 claude-config ui status             # Check if daemon is running
 claude-config ui stop               # Stop the daemon
 ```
 
-**Daemon Mode**: Run `claude-config ui --daemon` to start the UI as a background service.
+**Daemon Mode**: By default, `claude-config ui` runs as a background daemon.
 The UI runs from your home directory and persists across terminal sessions.
 Switch between registered projects using the dropdown in the header.
 

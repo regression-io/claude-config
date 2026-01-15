@@ -145,7 +145,7 @@ function startUI() {
   const flags = {
     port: 3333,
     dir: null, // Will default to active project or home
-    daemon: false
+    foreground: false  // Default to daemon mode
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -168,15 +168,16 @@ function startUI() {
       flags.dir = args[++i] || null;
     } else if (arg.startsWith('--dir=')) {
       flags.dir = arg.split('=')[1] || null;
-    } else if (arg === '--daemon' || arg === '-D') {
-      flags.daemon = true;
+    } else if (arg === '--foreground' || arg === '-f' || arg === '--daemon' || arg === '-D') {
+      // --foreground runs in foreground, --daemon kept for backwards compat (now default)
+      flags.foreground = (arg === '--foreground' || arg === '-f');
     } else if (!arg.startsWith('-') && fs.existsSync(arg) && fs.statSync(arg).isDirectory()) {
       flags.dir = arg;
     }
   }
 
-  // Daemon mode: spawn detached and exit
-  if (flags.daemon) {
+  // Default: daemon mode (spawn detached and exit)
+  if (!flags.foreground) {
     return startDaemon(flags);
   }
 
