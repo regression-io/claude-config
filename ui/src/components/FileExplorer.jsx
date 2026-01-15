@@ -886,7 +886,7 @@ function CreateFileDialog({ open, onClose, dir, type, onCreate }) {
 }
 
 // Main FileExplorer Component
-export default function FileExplorer({ onRefresh }) {
+export default function FileExplorer({ project, onRefresh }) {
   const [folders, setFolders] = useState([]);
   const [intermediatePaths, setIntermediatePaths] = useState([]);
   const [registry, setRegistry] = useState(null);
@@ -920,9 +920,13 @@ export default function FileExplorer({ onRefresh }) {
     }
   }, []);
 
+  // Reload data when project changes
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // Clear selection when project changes
+    setSelectedItem(null);
+    setFileContent(null);
+  }, [loadData, project?.dir]);
 
   const handleSelectItem = async (item) => {
     setSelectedItem(item);

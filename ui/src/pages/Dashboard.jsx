@@ -290,7 +290,7 @@ export default function Dashboard() {
   const renderContent = () => {
     switch (currentView) {
       case 'explorer':
-        return <FileExplorer onRefresh={loadData} />;
+        return <FileExplorer project={project} onRefresh={loadData} />;
       case 'subprojects':
         return <SubprojectsView project={project} rootProject={rootProject} onRefresh={handleRefresh} />;
       case 'registry':
