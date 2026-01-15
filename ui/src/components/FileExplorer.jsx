@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import ClaudeSettingsEditor from './ClaudeSettingsEditor';
+import GeminiSettingsEditor from './GeminiSettingsEditor';
 import SyncDialog from './SyncDialog';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
@@ -704,7 +705,7 @@ function MarkdownEditor({ content, onSave, fileType }) {
   );
 }
 
-// Settings Editor Component - uses the full ClaudeSettingsEditor
+// Settings Editor Component - detects tool type from file path
 function SettingsEditor({ content, parsed, onSave, filePath }) {
   const handleSave = async (settings) => {
     // Convert settings object to JSON string for saving
@@ -712,6 +713,24 @@ function SettingsEditor({ content, parsed, onSave, filePath }) {
     onSave(jsonContent);
   };
 
+  // Detect which tool's settings.json this is
+  const isGemini = filePath?.includes('.gemini') || filePath?.includes('/.gemini/');
+  const isAntigravity = filePath?.includes('.agent') || filePath?.includes('/antigravity/');
+
+  if (isGemini && !isAntigravity) {
+    return (
+      <div className="h-full overflow-auto p-4">
+        <GeminiSettingsEditor
+          settings={parsed || {}}
+          onSave={handleSave}
+          loading={false}
+          settingsPath={filePath || '~/.gemini/settings.json'}
+        />
+      </div>
+    );
+  }
+
+  // Default to Claude Code settings
   return (
     <div className="h-full overflow-auto p-4">
       <ClaudeSettingsEditor
