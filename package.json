@@ -1,12 +1,13 @@
 {
-  "name": "claude-config",
-  "version": "0.14.0",
+  "name": "claude-code-config",
+  "version": "0.14.11",
   "description": "Configuration management UI for Claude Code - manage MCPs, rules, commands, memory, and .claude folders",
   "author": "regression.io",
   "main": "config-loader.js",
   "type": "commonjs",
   "bin": {
-    "claude-config": "./cli.js"
+    "claude-code-config": "cli.js",
+    "claude-config": "cli.js"
   },
   "scripts": {
     "start": "node cli.js ui",
@@ -42,12 +43,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/regression-io/claude-config.git"
+    "url": "git+https://github.com/regression-io/claude-code-config.git"
   },
   "bugs": {
-    "url": "https://github.com/regression-io/claude-config/issues"
+    "url": "https://github.com/regression-io/claude-code-config/issues"
   },
-  "homepage": "https://github.com/regression-io/claude-config#readme",
+  "homepage": "https://github.com/regression-io/claude-code-config#readme",
   "files": [
     "cli.js",
     "config-loader.js",

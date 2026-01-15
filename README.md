@@ -1,16 +1,16 @@
-# Claude Config
+# Claude Code Config
 
 Configuration management for **Claude Code** with CLI and optional Web UI.
 
 ## Installation
 
 ```bash
-npm install -g claude-config
+npm install -g claude-code-config
 ```
 
 Or from GitHub:
 ```bash
-npm install -g github:regression-io/claude-config
+npm install -g github:regression-io/claude-code-config
 ```
 
 ## Quick Start
@@ -274,8 +274,8 @@ User settings stored in `~/.claude-config/config.json`:
 ## Development
 
 ```bash
-git clone https://github.com/regression-io/claude-config.git
-cd claude-config
+git clone https://github.com/regression-io/claude-code-config.git
+cd claude-code-config
 npm install
 npm run build
 npm start
