@@ -115,12 +115,17 @@ export default function Dashboard() {
   }, [selectedConfig]);
 
   // Load projects registry
-  const loadProjects = useCallback(async () => {
+  const loadProjects = useCallback(async (isInitialLoad = false) => {
     try {
       const data = await api.getProjects();
       setProjects(data.projects || []);
       const active = data.projects?.find(p => p.isActive);
       setActiveProject(active || null);
+
+      // On initial load, if no active project, show projects view
+      if (isInitialLoad && !active) {
+        setCurrentView('projects');
+      }
     } catch (error) {
       // Projects API might not exist in older versions
       console.log('Projects API not available');
@@ -156,7 +161,7 @@ export default function Dashboard() {
   // Initial load
   useEffect(() => {
     loadData();
-    loadProjects();
+    loadProjects(true);  // Pass true for initial load to show project selector if no active project
     // Load version info and check for updates
     api.checkVersion().then(data => {
       setVersion(data?.installedVersion);
@@ -168,10 +173,13 @@ export default function Dashboard() {
 
   // Handle one-click update
   const handleUpdate = async () => {
-    if (!updateInfo?.sourcePath) return;
+    if (!updateInfo?.updateAvailable) return;
     setUpdating(true);
     try {
-      const result = await api.performUpdate(updateInfo.sourcePath);
+      const result = await api.performUpdate({
+        updateMethod: updateInfo.updateMethod,
+        sourcePath: updateInfo.sourcePath
+      });
       if (result.success) {
         toast.success(`Updated to v${result.newVersion}! Reloading...`);
         // Reload the page after a short delay to get new UI
