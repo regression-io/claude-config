@@ -6,3 +6,4 @@ export { default as TemplatesView } from './TemplatesView';
 export { default as SubprojectsView } from './SubprojectsView';
 export { default as RegistryView } from './RegistryView';
 export { default as MemoryView } from './MemoryView';
+export { default as ProjectsView } from './ProjectsView';

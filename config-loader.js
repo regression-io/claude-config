@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const VERSION = '0.13.0';
+const VERSION = '0.14.0';
 
 class ClaudeConfigManager {
   constructor() {
@@ -1253,6 +1253,135 @@ class ClaudeConfigManager {
     fs.writeFileSync(envPath, lines.filter(l => l.trim()).join('\n') + '\n');
     console.log(`✓ Removed ${keyUpper} from .claude/.env`);
   }
+
+  // ===========================================================================
+  // PROJECT REGISTRY (for UI project switching)
+  // ===========================================================================
+
+  /**
+   * Get projects registry path
+   */
+  getProjectsRegistryPath() {
+    return path.join(this.installDir, 'projects.json');
+  }
+
+  /**
+   * Load projects registry
+   */
+  loadProjectsRegistry() {
+    const registryPath = this.getProjectsRegistryPath();
+    if (fs.existsSync(registryPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+      } catch (e) {
+        return { projects: [], activeProjectId: null };
+      }
+    }
+    return { projects: [], activeProjectId: null };
+  }
+
+  /**
+   * Save projects registry
+   */
+  saveProjectsRegistry(registry) {
+    const registryPath = this.getProjectsRegistryPath();
+    fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2) + '\n');
+  }
+
+  /**
+   * List registered projects
+   */
+  projectList() {
+    const registry = this.loadProjectsRegistry();
+
+    if (registry.projects.length === 0) {
+      console.log('\nNo projects registered.');
+      console.log('Add one with: claude-config project add [path]\n');
+      return;
+    }
+
+    console.log('\n📁 Registered Projects:\n');
+    for (const p of registry.projects) {
+      const active = p.id === registry.activeProjectId ? '→ ' : '  ';
+      const exists = fs.existsSync(p.path) ? '' : ' (not found)';
+      console.log(`${active}${p.name}${exists}`);
+      console.log(`    ${p.path}`);
+    }
+    console.log('');
+  }
+
+  /**
+   * Add project to registry
+   */
+  projectAdd(projectPath = process.cwd(), name = null) {
+    const absPath = path.resolve(projectPath.replace(/^~/, process.env.HOME || ''));
+
+    if (!fs.existsSync(absPath)) {
+      console.error(`Path not found: ${absPath}`);
+      return false;
+    }
+
+    const registry = this.loadProjectsRegistry();
+
+    // Check for duplicate
+    if (registry.projects.some(p => p.path === absPath)) {
+      console.log(`Already registered: ${absPath}`);
+      return false;
+    }
+
+    const project = {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      name: name || path.basename(absPath),
+      path: absPath,
+      addedAt: new Date().toISOString(),
+      lastOpened: null
+    };
+
+    registry.projects.push(project);
+
+    // If first project, make it active
+    if (!registry.activeProjectId) {
+      registry.activeProjectId = project.id;
+    }
+
+    this.saveProjectsRegistry(registry);
+    console.log(`✓ Added project: ${project.name}`);
+    console.log(`  ${absPath}`);
+    return true;
+  }
+
+  /**
+   * Remove project from registry
+   */
+  projectRemove(nameOrPath) {
+    if (!nameOrPath) {
+      console.error('Usage: claude-config project remove <name|path>');
+      return false;
+    }
+
+    const registry = this.loadProjectsRegistry();
+    const absPath = path.resolve(nameOrPath.replace(/^~/, process.env.HOME || ''));
+
+    const idx = registry.projects.findIndex(
+      p => p.name === nameOrPath || p.path === absPath
+    );
+
+    if (idx === -1) {
+      console.error(`Project not found: ${nameOrPath}`);
+      return false;
+    }
+
+    const removed = registry.projects.splice(idx, 1)[0];
+
+    // If removed active project, select first remaining
+    if (registry.activeProjectId === removed.id) {
+      registry.activeProjectId = registry.projects[0]?.id || null;
+    }
+
+    this.saveProjectsRegistry(registry);
+    console.log(`✓ Removed project: ${removed.name}`);
+    return true;
+  }
 }
 
 // =============================================================================
@@ -1338,6 +1467,21 @@ if (require.main === module) {
       }
       break;
 
+    // Project registry (for UI)
+    case 'project':
+    case 'projects':
+      if (args[1] === 'add') {
+        const nameIdx = args.indexOf('--name');
+        const name = nameIdx !== -1 ? args[nameIdx + 1] : null;
+        const projectPath = args[2] && !args[2].startsWith('--') ? args[2] : process.cwd();
+        manager.projectAdd(projectPath, name);
+      } else if (args[1] === 'remove' || args[1] === 'rm') {
+        manager.projectRemove(args[2]);
+      } else {
+        manager.projectList();
+      }
+      break;
+
     // Maintenance
     case 'update':
       manager.update(args[1]);
@@ -1384,6 +1528,12 @@ Environment Commands:
   env                          List environment variables
   env set <KEY> <value>        Set variable in .claude/.env
   env unset <KEY>              Remove variable
+
+Project Commands (for UI):
+  project                      List registered projects
+  project add [path]           Add project (defaults to cwd)
+  project add [path] --name X  Add with custom display name
+  project remove <name|path>   Remove project from registry
 
 Registry Commands:
   registry-add <name> '<json>'   Add MCP to global registry

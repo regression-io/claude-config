@@ -64,6 +64,15 @@ claude-config env set <KEY> <value>  # Set variable in .claude/.env
 claude-config env unset <KEY>        # Remove variable
 ```
 
+### Project Commands
+
+```bash
+claude-config project                      # List registered projects
+claude-config project add [path]           # Add project (defaults to cwd)
+claude-config project add [path] --name X  # Add with custom display name
+claude-config project remove <name|path>   # Remove from registry
+```
+
 ### Registry Commands
 
 ```bash
@@ -77,7 +86,14 @@ claude-config registry-remove <name>         # Remove MCP from registry
 claude-config ui                    # Start UI on port 3333
 claude-config ui --port 8080        # Custom port
 claude-config ui /path/to/project   # Specific project directory
+claude-config ui --daemon           # Run as background daemon
+claude-config ui status             # Check if daemon is running
+claude-config ui stop               # Stop the daemon
 ```
+
+**Daemon Mode**: Run `claude-config ui --daemon` to start the UI as a background service.
+The UI runs from your home directory and persists across terminal sessions.
+Switch between registered projects using the dropdown in the header.
 
 ## Templates
 
@@ -189,6 +205,7 @@ Manage via Web UI or edit files directly.
 
 When you run `claude-config ui`:
 
+- **Project Switcher** - Switch between registered projects from header dropdown
 - **File Explorer** - Browse/edit all .claude folders in hierarchy
 - **MCP Registry** - Search GitHub/npm, add/edit/delete MCPs
 - **Claude Code Settings** - Visual editor for `~/.claude/settings.json`

@@ -9,14 +9,26 @@
 
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const os = require('os');
+const { spawn, execSync } = require('child_process');
 
 const args = process.argv.slice(2);
 const command = args[0] || '';
 
+// PID file for daemon mode
+const PID_FILE = path.join(os.homedir(), '.claude-config', 'ui.pid');
+
 // UI command needs special handling (starts web server with better error handling)
 if (command === 'ui' || command === 'web' || command === 'server') {
-  startUI();
+  // Check for subcommand: ui stop, ui status
+  const subcommand = args[1];
+  if (subcommand === 'stop') {
+    stopDaemon();
+  } else if (subcommand === 'status') {
+    checkDaemonStatus();
+  } else {
+    startUI();
+  }
 } else {
   // Pass everything to config-loader.js
   const loaderPath = path.join(__dirname, 'config-loader.js');
@@ -30,11 +42,110 @@ if (command === 'ui' || command === 'web' || command === 'server') {
   });
 }
 
+function stopDaemon() {
+  if (!fs.existsSync(PID_FILE)) {
+    console.log('No daemon running (PID file not found)');
+    return;
+  }
+
+  try {
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim());
+    process.kill(pid, 'SIGTERM');
+    fs.unlinkSync(PID_FILE);
+    console.log(`Stopped daemon (PID: ${pid})`);
+  } catch (err) {
+    if (err.code === 'ESRCH') {
+      // Process doesn't exist, clean up PID file
+      fs.unlinkSync(PID_FILE);
+      console.log('Daemon was not running, cleaned up stale PID file');
+    } else {
+      console.error('Failed to stop daemon:', err.message);
+    }
+  }
+}
+
+function checkDaemonStatus() {
+  if (!fs.existsSync(PID_FILE)) {
+    console.log('Daemon: not running');
+    return;
+  }
+
+  try {
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim());
+    // Check if process is running
+    process.kill(pid, 0);
+    console.log(`Daemon: running (PID: ${pid})`);
+    console.log(`UI available at: http://localhost:3333`);
+  } catch (err) {
+    console.log('Daemon: not running (stale PID file)');
+    fs.unlinkSync(PID_FILE);
+  }
+}
+
+function startDaemon(flags) {
+  // Check if already running
+  if (fs.existsSync(PID_FILE)) {
+    try {
+      const existingPid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim());
+      process.kill(existingPid, 0);
+      console.log(`Daemon already running (PID: ${existingPid})`);
+      console.log(`UI available at: http://localhost:${flags.port}`);
+      console.log('Use "claude-config ui stop" to stop the daemon');
+      return;
+    } catch (err) {
+      // Process not running, clean up stale PID file
+      fs.unlinkSync(PID_FILE);
+    }
+  }
+
+  // Ensure PID directory exists
+  const pidDir = path.dirname(PID_FILE);
+  if (!fs.existsSync(pidDir)) {
+    fs.mkdirSync(pidDir, { recursive: true });
+  }
+
+  // Log file for daemon output
+  const logFile = path.join(pidDir, 'ui.log');
+
+  // Build args for spawned process (without --daemon flag)
+  const spawnArgs = ['ui'];
+  if (flags.port !== 3333) {
+    spawnArgs.push('--port', String(flags.port));
+  }
+  if (flags.dir) {
+    spawnArgs.push('--dir', flags.dir);
+  }
+
+  // Spawn detached process
+  const out = fs.openSync(logFile, 'a');
+  const err = fs.openSync(logFile, 'a');
+
+  const child = spawn(process.execPath, [__filename, ...spawnArgs], {
+    detached: true,
+    stdio: ['ignore', out, err],
+    cwd: os.homedir()
+  });
+
+  // Write PID file
+  fs.writeFileSync(PID_FILE, String(child.pid));
+
+  // Unref to allow parent to exit
+  child.unref();
+
+  console.log(`Started daemon (PID: ${child.pid})`);
+  console.log(`UI available at: http://localhost:${flags.port}`);
+  console.log(`Logs: ${logFile}`);
+  console.log('\nCommands:');
+  console.log('  claude-config ui status  - Check daemon status');
+  console.log('  claude-config ui stop    - Stop the daemon');
+}
+
 function startUI() {
   // Parse UI-specific flags
   const flags = {
     port: 3333,
-    dir: process.cwd()
+    dir: null, // Will default to active project or home
+    daemon: false
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -54,12 +165,19 @@ function startUI() {
       }
       flags.port = portVal;
     } else if (arg === '--dir' || arg === '-d') {
-      flags.dir = args[++i] || process.cwd();
+      flags.dir = args[++i] || null;
     } else if (arg.startsWith('--dir=')) {
-      flags.dir = arg.split('=')[1] || process.cwd();
+      flags.dir = arg.split('=')[1] || null;
+    } else if (arg === '--daemon' || arg === '-D') {
+      flags.daemon = true;
     } else if (!arg.startsWith('-') && fs.existsSync(arg) && fs.statSync(arg).isDirectory()) {
       flags.dir = arg;
     }
+  }
+
+  // Daemon mode: spawn detached and exit
+  if (flags.daemon) {
+    return startDaemon(flags);
   }
 
   // Validate port range
@@ -68,18 +186,21 @@ function startUI() {
     process.exit(1);
   }
 
-  // Validate directory exists
-  if (!fs.existsSync(flags.dir)) {
-    console.error(`Error: Directory not found: ${flags.dir}`);
-    process.exit(1);
-  }
+  // Validate directory exists (if specified)
+  if (flags.dir) {
+    if (!fs.existsSync(flags.dir)) {
+      console.error(`Error: Directory not found: ${flags.dir}`);
+      process.exit(1);
+    }
 
-  if (!fs.statSync(flags.dir).isDirectory()) {
-    console.error(`Error: Not a directory: ${flags.dir}`);
-    process.exit(1);
-  }
+    if (!fs.statSync(flags.dir).isDirectory()) {
+      console.error(`Error: Not a directory: ${flags.dir}`);
+      process.exit(1);
+    }
 
-  flags.dir = path.resolve(flags.dir);
+    flags.dir = path.resolve(flags.dir);
+  }
+  // If no dir specified, server will load from projects registry or use cwd
 
   // Load dependencies
   const serverPath = path.join(__dirname, 'ui', 'server.cjs');

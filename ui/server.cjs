@@ -14,15 +14,37 @@ const { spawn } = require('child_process');
 const TerminalServer = require('./terminal-server.cjs');
 
 class ConfigUIServer {
-  constructor(port = 3333, projectDir = process.cwd(), manager = null) {
+  constructor(port = 3333, projectDir = null, manager = null) {
     this.port = port;
-    this.projectDir = path.resolve(projectDir);
     // Manager is passed from CLI to avoid circular require
     this.manager = manager;
     this.distDir = path.join(__dirname, 'dist');
     this.terminalServer = new TerminalServer();
     this.configPath = path.join(os.homedir(), '.claude', 'config.json');
     this.config = this.loadConfig();
+
+    // Determine project directory: explicit arg > active project from registry > cwd
+    if (projectDir) {
+      this.projectDir = path.resolve(projectDir);
+    } else {
+      const activeProject = this.getActiveProjectFromRegistry();
+      this.projectDir = activeProject?.path || process.cwd();
+    }
+    this.projectDir = path.resolve(this.projectDir);
+  }
+
+  // Get active project from registry
+  getActiveProjectFromRegistry() {
+    if (!this.manager) return null;
+    try {
+      const registry = this.manager.loadProjectsRegistry();
+      if (registry.activeProjectId && registry.projects) {
+        return registry.projects.find(p => p.id === registry.activeProjectId);
+      }
+    } catch (e) {
+      // Registry doesn't exist yet
+    }
+    return null;
   }
 
   // Load user config from ~/.claude/config.json
@@ -127,6 +149,162 @@ class ConfigUIServer {
     } catch (e) {
       return { error: e.message };
     }
+  }
+
+  // ==================== Projects Registry ====================
+
+  /**
+   * Get all registered projects with status info
+   */
+  getProjects() {
+    if (!this.manager) {
+      return { projects: [], activeProjectId: null, error: 'Manager not available' };
+    }
+
+    const registry = this.manager.loadProjectsRegistry();
+
+    // Enrich with status info
+    const projects = registry.projects.map(p => ({
+      ...p,
+      exists: fs.existsSync(p.path),
+      hasClaudeConfig: fs.existsSync(path.join(p.path, '.claude')),
+      isActive: p.id === registry.activeProjectId
+    }));
+
+    // Sort: active first, then by lastOpened
+    projects.sort((a, b) => {
+      if (a.isActive) return -1;
+      if (b.isActive) return 1;
+      if (a.lastOpened && b.lastOpened) {
+        return new Date(b.lastOpened) - new Date(a.lastOpened);
+      }
+      return 0;
+    });
+
+    return {
+      projects,
+      activeProjectId: registry.activeProjectId,
+      currentDir: this.projectDir
+    };
+  }
+
+  /**
+   * Get active project details
+   */
+  getActiveProject() {
+    if (!this.manager) return { error: 'Manager not available' };
+
+    const registry = this.manager.loadProjectsRegistry();
+    const activeProject = registry.projects.find(p => p.id === registry.activeProjectId);
+
+    return {
+      project: activeProject || null,
+      dir: this.projectDir,
+      hierarchy: this.getHierarchy(),
+      subprojects: this.getSubprojects()
+    };
+  }
+
+  /**
+   * Add a project to the registry
+   */
+  addProject(projectPath, name = null) {
+    if (!this.manager) return { error: 'Manager not available' };
+
+    const absPath = path.resolve(projectPath.replace(/^~/, os.homedir()));
+
+    if (!fs.existsSync(absPath)) {
+      return { error: 'Path not found', path: absPath };
+    }
+
+    const registry = this.manager.loadProjectsRegistry();
+
+    // Check for duplicate
+    if (registry.projects.some(p => p.path === absPath)) {
+      return { error: 'Project already registered', path: absPath };
+    }
+
+    const project = {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      name: name || path.basename(absPath),
+      path: absPath,
+      addedAt: new Date().toISOString(),
+      lastOpened: null
+    };
+
+    registry.projects.push(project);
+
+    // If first project, make it active
+    if (!registry.activeProjectId) {
+      registry.activeProjectId = project.id;
+      this.projectDir = absPath;
+    }
+
+    this.manager.saveProjectsRegistry(registry);
+
+    return { success: true, project };
+  }
+
+  /**
+   * Remove a project from the registry
+   */
+  removeProject(projectId) {
+    if (!this.manager) return { error: 'Manager not available' };
+
+    const registry = this.manager.loadProjectsRegistry();
+    const idx = registry.projects.findIndex(p => p.id === projectId);
+
+    if (idx === -1) {
+      return { error: 'Project not found' };
+    }
+
+    const removed = registry.projects.splice(idx, 1)[0];
+
+    // If removing active project, switch to first remaining
+    if (registry.activeProjectId === projectId) {
+      registry.activeProjectId = registry.projects[0]?.id || null;
+      if (registry.projects[0]) {
+        this.projectDir = registry.projects[0].path;
+      }
+    }
+
+    this.manager.saveProjectsRegistry(registry);
+
+    return { success: true, removed };
+  }
+
+  /**
+   * Set active project and switch server context
+   */
+  setActiveProject(projectId) {
+    if (!this.manager) return { error: 'Manager not available' };
+
+    const registry = this.manager.loadProjectsRegistry();
+    const project = registry.projects.find(p => p.id === projectId);
+
+    if (!project) {
+      return { error: 'Project not found' };
+    }
+
+    if (!fs.existsSync(project.path)) {
+      return { error: 'Project path no longer exists', path: project.path };
+    }
+
+    // Update registry
+    registry.activeProjectId = projectId;
+    project.lastOpened = new Date().toISOString();
+    this.manager.saveProjectsRegistry(registry);
+
+    // Switch server context
+    this.projectDir = project.path;
+
+    return {
+      success: true,
+      project,
+      dir: this.projectDir,
+      hierarchy: this.getHierarchy(),
+      subprojects: this.getSubprojects()
+    };
   }
 
   start() {
@@ -477,6 +655,33 @@ class ConfigUIServer {
           return this.json(res, this.browseDirectory(body.path, body.type));
         }
         break;
+
+      // Projects registry (for project switching)
+      case '/api/projects':
+        if (req.method === 'GET') {
+          return this.json(res, this.getProjects());
+        }
+        if (req.method === 'POST') {
+          return this.json(res, this.addProject(body.path, body.name));
+        }
+        break;
+
+      case '/api/projects/active':
+        if (req.method === 'GET') {
+          return this.json(res, this.getActiveProject());
+        }
+        if (req.method === 'PUT') {
+          return this.json(res, this.setActiveProject(body.id));
+        }
+        break;
+    }
+
+    // Dynamic route for project deletion: DELETE /api/projects/:id
+    if (pathname.startsWith('/api/projects/') && req.method === 'DELETE') {
+      const projectId = pathname.split('/').pop();
+      if (projectId && projectId !== 'active') {
+        return this.json(res, this.removeProject(projectId));
+      }
     }
 
     res.writeHead(404);

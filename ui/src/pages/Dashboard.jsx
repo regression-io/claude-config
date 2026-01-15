@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, Package, Layout, Lock, RefreshCw, Rocket,
-  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download
+  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers
 } from 'lucide-react';
 import FileExplorer from "@/components/FileExplorer";
+import ProjectSwitcher from "@/components/ProjectSwitcher";
+import AddProjectDialog from "@/components/AddProjectDialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -19,12 +21,14 @@ import {
   TemplatesView,
   SubprojectsView,
   RegistryView,
-  MemoryView
+  MemoryView,
+  ProjectsView
 } from "@/views";
 
 const navItems = [
   { id: 'explorer', label: 'File Explorer', icon: FolderOpen, section: 'Projects' },
   { id: 'subprojects', label: 'Sub-Projects', icon: Folder, section: 'Projects', badge: 'subprojects' },
+  { id: 'projects', label: 'All Projects', icon: Layers, section: 'Projects' },
   { id: 'registry', label: 'MCP Registry', icon: Package, section: 'Configuration' },
   { id: 'memory', label: 'Memory', icon: Brain, section: 'Configuration' },
   { id: 'claude-settings', label: 'Claude Code', icon: Shield, section: 'Configuration' },
@@ -71,6 +75,9 @@ export default function Dashboard() {
   const [version, setVersion] = useState(null);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [activeProject, setActiveProject] = useState(null);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   // Persist currentView to localStorage
   useEffect(() => {
@@ -107,9 +114,49 @@ export default function Dashboard() {
     }
   }, [selectedConfig]);
 
+  // Load projects registry
+  const loadProjects = useCallback(async () => {
+    try {
+      const data = await api.getProjects();
+      setProjects(data.projects || []);
+      const active = data.projects?.find(p => p.isActive);
+      setActiveProject(active || null);
+    } catch (error) {
+      // Projects API might not exist in older versions
+      console.log('Projects API not available');
+    }
+  }, []);
+
+  // Handle project switch
+  const handleSwitchProject = async (projectId) => {
+    try {
+      const result = await api.setActiveProject(projectId);
+      if (result.success) {
+        setProject({ dir: result.dir, hierarchy: result.hierarchy, subprojects: result.subprojects });
+        setActiveProject(result.project);
+        setProjects(prev => prev.map(p => ({
+          ...p,
+          isActive: p.id === projectId
+        })));
+        await loadData();
+        toast.success(`Switched to ${result.project.name}`);
+      } else {
+        toast.error(result.error || 'Failed to switch project');
+      }
+    } catch (error) {
+      toast.error('Failed to switch project: ' + error.message);
+    }
+  };
+
+  // Handle project added
+  const handleProjectAdded = (newProject) => {
+    setProjects(prev => [...prev, { ...newProject, exists: true, hasClaudeConfig: false }]);
+  };
+
   // Initial load
   useEffect(() => {
     loadData();
+    loadProjects();
     // Load version info and check for updates
     api.checkVersion().then(data => {
       setVersion(data?.installedVersion);
@@ -236,6 +283,12 @@ export default function Dashboard() {
         return <ClaudeSettingsView />;
       case 'preferences':
         return <PreferencesView />;
+      case 'projects':
+        return <ProjectsView onProjectSwitch={(result) => {
+          setProject({ dir: result.dir, hierarchy: result.hierarchy, subprojects: result.subprojects });
+          loadData();
+          loadProjects();
+        }} />;
       default:
         return null;
     }
@@ -273,10 +326,13 @@ export default function Dashboard() {
               )}
             </div>
             <Separator orientation="vertical" className="h-6" />
-            <div className="flex flex-col">
-              <code className="text-xs text-gray-600 font-mono">{project.dir}</code>
-              <span className="text-[10px] text-gray-400">Run from your project directory</span>
-            </div>
+            <ProjectSwitcher
+              projects={projects}
+              activeProject={activeProject}
+              onSwitch={handleSwitchProject}
+              onAddClick={() => setAddProjectOpen(true)}
+              onManageClick={() => setCurrentView('projects')}
+            />
           </div>
 
           <div className="flex items-center gap-3">
@@ -363,6 +419,13 @@ export default function Dashboard() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Add Project Dialog */}
+      <AddProjectDialog
+        open={addProjectOpen}
+        onOpenChange={setAddProjectOpen}
+        onAdded={handleProjectAdded}
+      />
     </div>
   );
 }

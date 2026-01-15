@@ -41,6 +41,31 @@ export const api = {
     });
   },
 
+  // Projects registry (for project switching in UI)
+  async getProjects() {
+    return request('/projects');
+  },
+
+  async addProject(path, name = null) {
+    return request('/projects', {
+      method: 'POST',
+      body: { path, name },
+    });
+  },
+
+  async removeProject(id) {
+    return request(`/projects/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async setActiveProject(id) {
+    return request('/projects/active', {
+      method: 'PUT',
+      body: { id },
+    });
+  },
+
   // Configs
   async getConfigs() {
     return request('/configs');

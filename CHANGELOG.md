@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-01-15
+
+### Added
+
+- **Project Management** - Register and switch between projects in the UI
+  - Project switcher dropdown in the header for quick switching
+  - Add projects via CLI (`claude-config project add`) or UI
+  - Projects registry stored in `~/.claude-config/projects.json`
+  - Manage all registered projects in dedicated Projects view
+
+- **Daemon Mode** - Run the UI as a background service
+  - `claude-config ui --daemon` - Start as background daemon
+  - `claude-config ui status` - Check if daemon is running
+  - `claude-config ui stop` - Stop the daemon
+  - Runs from home directory, persists across terminal sessions
+  - Logs stored in `~/.claude-config/ui.log`
+
+- **Project CLI Commands**
+  - `claude-config project` - List all registered projects
+  - `claude-config project add [path]` - Add a project to registry
+  - `claude-config project remove <name|path>` - Remove from registry
+
+### Changed
+
+- Server now loads active project from registry on startup (no `--dir` required)
+- UI can be started from any directory and switch projects dynamically
+
+---
+
 ## [0.13.0] - 2025-01-15
 
 ### Added
