@@ -618,6 +618,18 @@ class ConfigUIServer {
         }
         break;
 
+      case '/api/init-claude-folder':
+        if (req.method === 'POST') {
+          return this.json(res, this.initClaudeFolder(body.dir));
+        }
+        break;
+
+      case '/api/delete-claude-folder':
+        if (req.method === 'POST') {
+          return this.json(res, this.deleteClaudeFolder(body.dir));
+        }
+        break;
+
       // Memory System
       case '/api/memory':
         return this.json(res, this.getMemory());
@@ -1699,6 +1711,55 @@ class ConfigUIServer {
 
     fs.renameSync(oldPath, newPath);
     return { success: true, oldPath, newPath };
+  }
+
+  /**
+   * Initialize a .claude folder in a directory (e.g., for a sub-project)
+   */
+  initClaudeFolder(dir) {
+    if (!dir) {
+      return { error: 'dir is required' };
+    }
+
+    const absDir = path.resolve(dir.replace(/^~/, os.homedir()));
+    if (!fs.existsSync(absDir)) {
+      return { error: 'Directory not found', dir: absDir };
+    }
+
+    const claudeDir = path.join(absDir, '.claude');
+    if (fs.existsSync(claudeDir)) {
+      return { error: '.claude folder already exists', dir: claudeDir };
+    }
+
+    // Create .claude folder with mcps.json
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(claudeDir, 'mcps.json'),
+      JSON.stringify({ mcpServers: {} }, null, 2)
+    );
+
+    return { success: true, dir: claudeDir };
+  }
+
+  /**
+   * Delete a .claude folder from a directory
+   */
+  deleteClaudeFolder(dir) {
+    if (!dir) {
+      return { error: 'dir is required' };
+    }
+
+    const absDir = path.resolve(dir.replace(/^~/, os.homedir()));
+    const claudeDir = path.join(absDir, '.claude');
+
+    if (!fs.existsSync(claudeDir)) {
+      return { error: '.claude folder not found', dir: claudeDir };
+    }
+
+    // Recursively delete the .claude folder
+    fs.rmSync(claudeDir, { recursive: true, force: true });
+
+    return { success: true, dir: claudeDir };
   }
 
   /**

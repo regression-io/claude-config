@@ -252,6 +252,22 @@ export const api = {
     });
   },
 
+  // Create .claude folder for a directory (e.g., sub-project)
+  async initClaudeFolder(dir) {
+    return request('/init-claude-folder', {
+      method: 'POST',
+      body: { dir },
+    });
+  },
+
+  // Delete .claude folder from a directory
+  async deleteClaudeFolder(dir) {
+    return request('/delete-claude-folder', {
+      method: 'POST',
+      body: { dir },
+    });
+  },
+
   async moveClaudeItem(sourcePath, targetDir, mode = 'copy', merge = false) {
     return request('/claude-move', {
       method: 'POST',

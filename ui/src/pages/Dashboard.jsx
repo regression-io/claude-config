@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [rootProject, setRootProject] = useState(null); // Track root project for sticky subprojects
 
   // Persist currentView to localStorage
   useEffect(() => {
@@ -125,6 +126,13 @@ export default function Dashboard() {
       const active = data.projects?.find(p => p.isActive);
       setActiveProject(active || null);
 
+      // On initial load, set root project from active project
+      if (isInitialLoad && active) {
+        // Fetch project data to get subprojects for root
+        const projectData = await api.getProject();
+        setRootProject({ dir: active.path, subprojects: projectData.subprojects });
+      }
+
       // On initial load, only show projects view if no active project and no stored view
       if (isInitialLoad && !active) {
         const storedView = getStoredState('currentView', null);
@@ -138,12 +146,14 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Handle project switch
+  // Handle project switch (from registry - sets root project)
   const handleSwitchProject = async (projectId) => {
     try {
       const result = await api.setActiveProject(projectId);
       if (result.success) {
         setProject({ dir: result.dir, hierarchy: result.hierarchy, subprojects: result.subprojects });
+        // Store as root project for sticky subprojects
+        setRootProject({ dir: result.dir, subprojects: result.subprojects });
         setActiveProject(result.project);
         setProjects(prev => prev.map(p => ({
           ...p,
@@ -239,7 +249,7 @@ export default function Dashboard() {
   });
 
   const badges = {
-    subprojects: project.subprojects?.length || 0,
+    subprojects: rootProject?.subprojects?.length || project.subprojects?.length || 0,
     mcps: uniqueEnabledMcps.size,
     rules: rules.length,
     commands: commands.length,
@@ -282,7 +292,7 @@ export default function Dashboard() {
       case 'explorer':
         return <FileExplorer onRefresh={loadData} />;
       case 'subprojects':
-        return <SubprojectsView project={project} onRefresh={handleRefresh} />;
+        return <SubprojectsView project={project} rootProject={rootProject} onRefresh={handleRefresh} />;
       case 'registry':
         return <RegistryView registry={registry} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onUpdate={loadData} />;
       case 'memory':
@@ -300,6 +310,7 @@ export default function Dashboard() {
       case 'projects':
         return <ProjectsView onProjectSwitch={(result) => {
           setProject({ dir: result.dir, hierarchy: result.hierarchy, subprojects: result.subprojects });
+          setRootProject({ dir: result.dir, subprojects: result.subprojects });
           loadData();
           loadProjects();
         }} />;
@@ -380,8 +391,9 @@ export default function Dashboard() {
                   {navItems
                     .filter(item => item.section === section)
                     .filter(item => {
-                      // Hide sub-projects if there are none
-                      if (item.id === 'subprojects' && (!project.subprojects || project.subprojects.length === 0)) {
+                      // Hide sub-projects if there are none (use root project for sticky behavior)
+                      const subprojectsList = rootProject?.subprojects || project.subprojects;
+                      if (item.id === 'subprojects' && (!subprojectsList || subprojectsList.length === 0)) {
                         return false;
                       }
                       return true;
