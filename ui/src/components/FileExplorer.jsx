@@ -241,9 +241,9 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
           <DropdownMenuContent align="end" className="w-48">
             {/* Info badges row */}
             <div className="flex items-center gap-1 px-2 py-1.5 border-b mb-1">
-              {isSubproject && (
-                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700">
-                  sub
+              {isProject && hasSubprojects && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
+                  root
                 </Badge>
               )}
               {!folder.exists && !isHome && (
