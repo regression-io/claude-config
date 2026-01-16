@@ -229,36 +229,41 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </span>
         <Icon className={cn('w-4 h-4', getTextColor())} />
-        <span className={cn('flex-1 font-medium text-sm truncate', getTextColor())}>
+        <span className={cn('flex-1 min-w-0 font-medium text-sm truncate', getTextColor())}>
           {displayLabel}
         </span>
-        {isSubproject && (
-          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700">
-            sub
-          </Badge>
-        )}
-        {!folder.exists && !isHome && (
-          <Badge variant="outline" className="text-[10px] px-1 py-0">no config</Badge>
-        )}
-        {/* Applied template badge */}
-        {folder.appliedTemplate?.template && (
-          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-700">
-            {folder.appliedTemplate.template.split('/').pop()}
-          </Badge>
-        )}
-        {totalFiles > 0 && !folder.appliedTemplate && (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-            {totalFiles}
-          </Badge>
-        )}
         {/* + Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-white/50 dark:hover:bg-slate-900/50">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0 hover:bg-white/50 dark:hover:bg-slate-900/50">
               <Plus className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            {/* Info badges row */}
+            <div className="flex items-center gap-1 px-2 py-1.5 border-b mb-1">
+              {isSubproject && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+                  sub
+                </Badge>
+              )}
+              {!folder.exists && !isHome && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0">no config</Badge>
+              )}
+              {folder.appliedTemplate?.template && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-700">
+                  {folder.appliedTemplate.template.split('/').pop()}
+                </Badge>
+              )}
+              {totalFiles > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {totalFiles} files
+                </Badge>
+              )}
+              {!isSubproject && folder.exists && !folder.appliedTemplate?.template && totalFiles === 0 && (
+                <span className="text-[10px] text-muted-foreground">configured</span>
+              )}
+            </div>
             <DropdownMenuItem
               onClick={(e) => { e.stopPropagation(); onCreateFile(folder.dir, 'mcps'); }}
               disabled={hasMcps}
