@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Folder, RefreshCw, ExternalLink, FolderPlus, Trash2, ArrowLeft, Settings, Check, X, MoreVertical, FileStack, ChevronDown, Plus, Link } from 'lucide-react';
+import { Folder, RefreshCw, ExternalLink, FolderPlus, Trash2, ArrowLeft, Settings, Check, X, MoreVertical, FileStack, ChevronDown, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -410,12 +410,6 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
                       <h3 className="font-semibold text-foreground">{proj.name}</h3>
                       {isCurrentProject && (
                         <Badge variant="default" className="text-xs">Current</Badge>
-                      )}
-                      {proj.isManual && (
-                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
-                          <Link className="w-3 h-3 mr-1" />
-                          linked
-                        </Badge>
                       )}
                     </div>
                     <div className="flex gap-1">

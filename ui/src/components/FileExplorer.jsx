@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import {
   Folder,
   FolderOpen,
+  FolderPlus,
   File,
   FileJson,
   FileText,
@@ -180,7 +181,7 @@ function TreeItem({ item, level = 0, selectedPath, onSelect, onContextMenu, expa
 }
 
 // Folder Row Component - collapsible tree entry
-function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onToggle, onCreateFile, onSelectItem, selectedPath, onContextMenu, expandedFolders, onToggleFolder, templates, hasSubprojects }) {
+function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onToggle, onCreateFile, onSelectItem, selectedPath, onContextMenu, expandedFolders, onToggleFolder, templates, hasSubprojects, onAddSubproject, onRemoveSubproject }) {
   // Check what files already exist
   const hasMcps = folder.files?.some(f => f.name === 'mcps.json');
   const hasSettings = folder.files?.some(f => f.name === 'settings.json');
@@ -312,6 +313,29 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
               CLAUDE.md
               {hasClaudeMd && <span className="ml-auto text-xs text-muted-foreground">exists</span>}
             </DropdownMenuItem>
+            {/* Add Sub-project - only for root project */}
+            {isProject && onAddSubproject && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddSubproject(folder.dir); }}>
+                  <FolderPlus className="w-4 h-4 mr-2" />
+                  Add Sub-project
+                </DropdownMenuItem>
+              </>
+            )}
+            {/* Remove Sub-project - only for manually added sub-projects */}
+            {folder.isManual && onRemoveSubproject && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onRemoveSubproject(folder.dir); }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Remove Sub-project
+                </DropdownMenuItem>
+              </>
+            )}
             {/* Only show Apply Template when no template applied yet */}
             {templates && templates.length > 0 && (isSubproject || !hasSubprojects) && !folder.appliedTemplate?.template && (
               <>
@@ -936,6 +960,7 @@ export default function FileExplorer({ project, onRefresh }) {
   const [createDialog, setCreateDialog] = useState({ open: false, dir: null, type: null });
   const [renameDialog, setRenameDialog] = useState({ open: false, item: null });
   const [syncDialog, setSyncDialog] = useState(false);
+  const [addSubprojectDialog, setAddSubprojectDialog] = useState({ open: false, projectDir: null, path: '' });
   const [contextMenu, setContextMenu] = useState({ x: 0, y: 0, item: null });
 
   const [enabledTools, setEnabledTools] = useState(['claude']);
@@ -1123,6 +1148,44 @@ export default function FileExplorer({ project, onRefresh }) {
     }
   };
 
+  const handleAddSubproject = async () => {
+    const subPath = addSubprojectDialog.path.trim();
+    if (!subPath) {
+      toast.error('Please enter a folder path');
+      return;
+    }
+    try {
+      const result = await api.addManualSubproject(addSubprojectDialog.projectDir, subPath);
+      if (result.success) {
+        toast.success(`Added sub-project: ${subPath.split('/').pop()}`);
+        setAddSubprojectDialog({ open: false, projectDir: null, path: '' });
+        loadData();
+      } else {
+        toast.error(result.error || 'Failed to add sub-project');
+      }
+    } catch (error) {
+      toast.error('Failed to add sub-project: ' + error.message);
+    }
+  };
+
+  const handleRemoveSubproject = async (subprojectDir) => {
+    // Find the root project dir
+    const rootProject = folders.find(f => !f.isSubproject && !f.isHome);
+    if (!rootProject) return;
+
+    try {
+      const result = await api.removeManualSubproject(rootProject.dir, subprojectDir);
+      if (result.success) {
+        toast.success('Removed sub-project');
+        loadData();
+      } else {
+        toast.error(result.error || 'Failed to remove sub-project');
+      }
+    } catch (error) {
+      toast.error('Failed to remove sub-project: ' + error.message);
+    }
+  };
+
   const renderEditor = () => {
     if (!selectedItem || !fileContent) {
       return (
@@ -1237,6 +1300,8 @@ export default function FileExplorer({ project, onRefresh }) {
               onToggleFolder={handleToggleNestedFolder}
               templates={templates}
               hasSubprojects={hasSubprojects}
+              onAddSubproject={(projectDir) => setAddSubprojectDialog({ open: true, projectDir, path: '' })}
+              onRemoveSubproject={handleRemoveSubproject}
             />
           ))}
         </ScrollArea>
@@ -1332,6 +1397,38 @@ export default function FileExplorer({ project, onRefresh }) {
         projectDir={project?.dir}
         onSynced={loadData}
       />
+      {/* Add Sub-project Dialog */}
+      <Dialog open={addSubprojectDialog.open} onOpenChange={(open) => setAddSubprojectDialog({ ...addSubprojectDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Sub-project</DialogTitle>
+            <DialogDescription>
+              Enter the path to a folder you want to manage as a sub-project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="/path/to/project or ~/projects/my-app"
+              value={addSubprojectDialog.path}
+              onChange={(e) => setAddSubprojectDialog({ ...addSubprojectDialog, path: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSubproject()}
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Use ~ for home directory. The folder must exist.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddSubprojectDialog({ open: false, projectDir: null, path: '' })}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSubproject}>
+              <FolderPlus className="w-4 h-4 mr-2" />
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
