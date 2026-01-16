@@ -76,6 +76,11 @@ export const api = {
     return request(`/subprojects/hidden?dir=${encodeURIComponent(projectDir)}`);
   },
 
+  // Detect template for a directory
+  async detectTemplate(dir) {
+    return request(`/detect-template?dir=${encodeURIComponent(dir)}`);
+  },
+
   async switchProject(dir) {
     return request('/switch-project', {
       method: 'POST',

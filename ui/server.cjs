@@ -514,6 +514,14 @@ class ConfigUIServer {
         const hiddenDir = query.dir ? path.resolve(query.dir.replace(/^~/, os.homedir())) : this.projectDir;
         return this.json(res, { hidden: this.getHiddenSubprojects(hiddenDir) });
 
+      // Detect template for a directory
+      case '/api/detect-template':
+        const detectDir = query.dir ? path.resolve(query.dir.replace(/^~/, os.homedir())) : null;
+        if (!detectDir) {
+          return this.json(res, { detected: false, error: 'Missing dir parameter' });
+        }
+        return this.json(res, this.detectTemplate(detectDir));
+
       // Switch to a different project context
       case '/api/switch-project':
         if (req.method === 'POST') {
@@ -1140,6 +1148,160 @@ class ConfigUIServer {
       name: path.basename(dir),
       exists: fs.existsSync(dir)
     }));
+  }
+
+  /**
+   * Detect the best matching template for a directory based on project markers
+   */
+  detectTemplate(dir) {
+    const resolvedDir = path.resolve(dir.replace(/^~/, os.homedir()));
+    if (!fs.existsSync(resolvedDir)) {
+      return { detected: false, error: 'Directory not found' };
+    }
+
+    // Detect project markers
+    const markers = {
+      npm: fs.existsSync(path.join(resolvedDir, 'package.json')),
+      python: fs.existsSync(path.join(resolvedDir, 'pyproject.toml')) ||
+              fs.existsSync(path.join(resolvedDir, 'requirements.txt')) ||
+              fs.existsSync(path.join(resolvedDir, 'setup.py')),
+      rust: fs.existsSync(path.join(resolvedDir, 'Cargo.toml')),
+      go: fs.existsSync(path.join(resolvedDir, 'go.mod')),
+      ruby: fs.existsSync(path.join(resolvedDir, 'Gemfile')),
+    };
+
+    // Check for framework-specific markers
+    let framework = null;
+    let confidence = 'low';
+
+    if (markers.npm) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(resolvedDir, 'package.json'), 'utf8'));
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+        if (deps.react) {
+          framework = deps.typescript ? 'react-ts' : 'react-js';
+          confidence = 'high';
+        } else if (deps.next) {
+          framework = deps.typescript ? 'react-ts' : 'react-js'; // Next.js uses React
+          confidence = 'high';
+        } else if (deps.vue) {
+          framework = 'languages/javascript';
+          confidence = 'medium';
+        } else if (deps.express || deps.fastify || deps.koa) {
+          framework = deps.typescript ? 'languages/typescript' : 'languages/javascript';
+          confidence = 'medium';
+        } else if (deps.typescript) {
+          framework = 'languages/typescript';
+          confidence = 'medium';
+        } else {
+          framework = 'languages/javascript';
+          confidence = 'low';
+        }
+      } catch (e) {
+        framework = 'languages/javascript';
+        confidence = 'low';
+      }
+    } else if (markers.python) {
+      // Check for FastAPI or other frameworks
+      const hasRequirements = fs.existsSync(path.join(resolvedDir, 'requirements.txt'));
+      const hasPyproject = fs.existsSync(path.join(resolvedDir, 'pyproject.toml'));
+
+      if (hasRequirements) {
+        try {
+          const reqs = fs.readFileSync(path.join(resolvedDir, 'requirements.txt'), 'utf8').toLowerCase();
+          if (reqs.includes('fastapi')) {
+            framework = 'fastapi';
+            confidence = 'high';
+          } else if (reqs.includes('django')) {
+            framework = 'languages/python';
+            confidence = 'medium';
+          } else if (reqs.includes('flask')) {
+            framework = 'languages/python';
+            confidence = 'medium';
+          } else if (reqs.includes('mcp')) {
+            framework = 'mcp-python';
+            confidence = 'high';
+          }
+        } catch (e) {}
+      }
+
+      if (!framework && hasPyproject) {
+        try {
+          const pyproject = fs.readFileSync(path.join(resolvedDir, 'pyproject.toml'), 'utf8').toLowerCase();
+          if (pyproject.includes('fastapi')) {
+            framework = 'fastapi';
+            confidence = 'high';
+          } else if (pyproject.includes('mcp')) {
+            framework = 'mcp-python';
+            confidence = 'high';
+          }
+        } catch (e) {}
+      }
+
+      if (!framework) {
+        // Check if it looks like a CLI app
+        const hasMain = fs.existsSync(path.join(resolvedDir, '__main__.py')) ||
+                       fs.existsSync(path.join(resolvedDir, 'cli.py')) ||
+                       fs.existsSync(path.join(resolvedDir, 'main.py'));
+        if (hasMain) {
+          framework = 'python-cli';
+          confidence = 'medium';
+        } else {
+          framework = 'languages/python';
+          confidence = 'low';
+        }
+      }
+    } else if (markers.rust) {
+      framework = 'languages/rust';
+      confidence = 'medium';
+    } else if (markers.go) {
+      framework = 'languages/go';
+      confidence = 'medium';
+    }
+
+    if (!framework) {
+      return { detected: false, reason: 'No recognizable project markers found' };
+    }
+
+    // Find matching template
+    const templates = this.getTemplates();
+    let matchedTemplate = null;
+
+    // First try exact match on framework name (e.g., "fastapi" -> "frameworks/fastapi")
+    matchedTemplate = templates.find(t =>
+      t.fullName === `frameworks/${framework}` || t.name === framework
+    );
+
+    // If framework is a language (e.g., "languages/javascript"), match it directly
+    if (!matchedTemplate && framework.startsWith('languages/')) {
+      matchedTemplate = templates.find(t => t.fullName === framework);
+    }
+
+    // Last resort: find a framework template that includes this language
+    // (only if we still have no match)
+    if (!matchedTemplate && framework.startsWith('languages/')) {
+      matchedTemplate = templates.find(t =>
+        t.includes && t.includes.includes(framework) && t.category === 'frameworks'
+      );
+    }
+
+    if (!matchedTemplate) {
+      return {
+        detected: false,
+        reason: `No template found for detected framework: ${framework}`,
+        suggestedFramework: framework,
+        markers
+      };
+    }
+
+    return {
+      detected: true,
+      template: matchedTemplate,
+      confidence,
+      reason: `Detected ${framework} project`,
+      markers
+    };
   }
 
   /**

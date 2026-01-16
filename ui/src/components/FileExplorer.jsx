@@ -970,6 +970,7 @@ export default function FileExplorer({ project, onRefresh }) {
   const [renameDialog, setRenameDialog] = useState({ open: false, item: null });
   const [syncDialog, setSyncDialog] = useState(false);
   const [addSubprojectDialog, setAddSubprojectDialog] = useState({ open: false, projectDir: null });
+  const [templateSuggestion, setTemplateSuggestion] = useState({ open: false, dir: null, template: null, confidence: null });
   const [contextMenu, setContextMenu] = useState({ x: 0, y: 0, item: null });
 
   const [enabledTools, setEnabledTools] = useState(['claude']);
@@ -1165,6 +1166,22 @@ export default function FileExplorer({ project, onRefresh }) {
         toast.success(`Added sub-project: ${selectedPath.split('/').pop()}`);
         setAddSubprojectDialog({ open: false, projectDir: null });
         loadData();
+
+        // Try to detect template for the new sub-project
+        try {
+          const detection = await api.detectTemplate(selectedPath);
+          if (detection.detected && detection.template) {
+            setTemplateSuggestion({
+              open: true,
+              dir: selectedPath,
+              template: detection.template,
+              confidence: detection.confidence,
+              reason: detection.reason
+            });
+          }
+        } catch (e) {
+          // Silently ignore detection errors
+        }
       } else {
         toast.error(result.error || 'Failed to add sub-project');
       }
@@ -1206,6 +1223,23 @@ export default function FileExplorer({ project, onRefresh }) {
       }
     } catch (error) {
       toast.error('Failed to hide sub-project: ' + error.message);
+    }
+  };
+
+  const handleApplySuggestedTemplate = async () => {
+    if (!templateSuggestion.dir || !templateSuggestion.template) return;
+
+    try {
+      const result = await api.applyTemplate(templateSuggestion.dir, templateSuggestion.template.fullName);
+      if (result.success) {
+        toast.success(`Applied template: ${templateSuggestion.template.name}`);
+        setTemplateSuggestion({ open: false, dir: null, template: null, confidence: null });
+        loadData();
+      } else {
+        toast.error(result.error || 'Failed to apply template');
+      }
+    } catch (error) {
+      toast.error('Failed to apply template: ' + error.message);
     }
   };
 
@@ -1431,6 +1465,47 @@ export default function FileExplorer({ project, onRefresh }) {
         title="Add Sub-project"
         initialPath={addSubprojectDialog.projectDir || '~'}
       />
+
+      {/* Template Suggestion Dialog */}
+      <Dialog open={templateSuggestion.open} onOpenChange={(open) => setTemplateSuggestion({ ...templateSuggestion, open })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layout className="w-5 h-5" />
+              Template Detected
+            </DialogTitle>
+            <DialogDescription>
+              {templateSuggestion.reason}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{templateSuggestion.template?.name}</p>
+                  <p className="text-sm text-muted-foreground">{templateSuggestion.template?.description}</p>
+                </div>
+                <Badge variant={templateSuggestion.confidence === 'high' ? 'default' : 'secondary'}>
+                  {templateSuggestion.confidence} confidence
+                </Badge>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-3">
+              Apply this template to <code className="text-xs bg-muted px-1 py-0.5 rounded">{templateSuggestion.dir?.split('/').pop()}</code>?
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateSuggestion({ open: false, dir: null, template: null, confidence: null })}>
+              Skip
+            </Button>
+            <Button onClick={handleApplySuggestedTemplate}>
+              Apply Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
