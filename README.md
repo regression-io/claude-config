@@ -145,13 +145,16 @@ This enables:
 
 ## Configuration Hierarchy
 
-Settings merge from global to project:
+Settings merge from global to project to sub-project:
 
 ```
-~/.claude/mcps.json              # Global - applies everywhere
-~/projects/.claude/mcps.json     # Workspace - applies to projects here
-~/projects/my-app/.claude/       # Project - specific to this project
+~/.claude/mcps.json                    # Global - applies everywhere
+~/projects/.claude/mcps.json           # Workspace - applies to projects here
+~/projects/my-app/.claude/             # Project - specific to this project
+~/projects/my-app/server/.claude/      # Sub-project - inherits from parent
 ```
+
+Sub-projects are automatically detected (folders with `.git`), or you can manually link any folder using "Add Sub-project" in the Web UI.
 
 ## Project Structure
 
@@ -215,6 +218,7 @@ When you run `claude-config ui`:
 
 - **Project Switcher** - Switch between registered projects from header dropdown
 - **File Explorer** - Browse/edit all .claude folders in hierarchy
+- **Sub-Projects** - Auto-detects git repos, plus manually add external folders
 - **MCP Registry** - Search GitHub/npm, add/edit/delete MCPs
 - **Claude Code Settings** - Visual editor for `~/.claude/settings.json`
   - Permissions (allow/ask/deny rules)

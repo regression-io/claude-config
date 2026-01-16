@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Folder, RefreshCw, ExternalLink, FolderPlus, Trash2, ArrowLeft, Settings, Check, X, MoreVertical, FileStack, ChevronDown } from 'lucide-react';
+import { Folder, RefreshCw, ExternalLink, FolderPlus, Trash2, ArrowLeft, Settings, Check, X, MoreVertical, FileStack, ChevronDown, Plus, Link } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import {
@@ -17,6 +18,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +38,8 @@ import {
 
 export default function SubprojectsView({ project, rootProject, onRefresh }) {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, proj: null });
+  const [removeDialog, setRemoveDialog] = useState({ open: false, proj: null });
+  const [addDialog, setAddDialog] = useState({ open: false, path: '' });
   const [selectedProjects, setSelectedProjects] = useState(new Set());
   const [templates, setTemplates] = useState([]);
   const [applying, setApplying] = useState(false);
@@ -181,6 +192,49 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
     setDeleteDialog({ open: true, proj });
   };
 
+  // Add manual sub-project
+  const handleAddSubproject = async () => {
+    const subPath = addDialog.path.trim();
+    if (!subPath) {
+      toast.error('Please enter a folder path');
+      return;
+    }
+
+    try {
+      const projectRoot = rootProject?.dir || project.dir;
+      const result = await api.addManualSubproject(projectRoot, subPath);
+      if (result.success) {
+        toast.success(`Added sub-project: ${subPath.split('/').pop()}`);
+        setAddDialog({ open: false, path: '' });
+        onRefresh();
+      } else {
+        toast.error(result.error || 'Failed to add sub-project');
+      }
+    } catch (error) {
+      toast.error('Failed to add sub-project: ' + error.message);
+    }
+  };
+
+  // Remove manual sub-project
+  const handleRemoveSubproject = async () => {
+    const proj = removeDialog.proj;
+    if (!proj) return;
+
+    try {
+      const projectRoot = rootProject?.dir || project.dir;
+      const result = await api.removeManualSubproject(projectRoot, proj.dir);
+      if (result.success) {
+        toast.success(`Removed sub-project: ${proj.name}`);
+        onRefresh();
+      } else {
+        toast.error(result.error || 'Failed to remove sub-project');
+      }
+    } catch (error) {
+      toast.error('Failed to remove sub-project: ' + error.message);
+    }
+    setRemoveDialog({ open: false, proj: null });
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
@@ -204,6 +258,10 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setAddDialog({ open: true, path: '' })}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Sub-project
+            </Button>
             {subprojects.some(p => !p.hasConfig) && (
               <Button variant="outline" size="sm" onClick={handleInitAllUnconfigured}>
                 <FolderPlus className="w-4 h-4 mr-2" />
@@ -241,7 +299,7 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
             </p>
           )}
           <p className="text-xs text-muted-foreground mt-1">
-            Found {subprojects.length} sub-project{subprojects.length !== 1 ? 's' : ''} with .git directories.
+            {subprojects.length} sub-project{subprojects.length !== 1 ? 's' : ''} ({subprojects.filter(p => !p.isManual).length} detected, {subprojects.filter(p => p.isManual).length} linked)
           </p>
         </div>
 
@@ -315,16 +373,27 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
                         <Settings className="w-4 h-4 mr-2" />
                         Switch to project
                       </DropdownMenuItem>
-                      {proj.hasConfig && (
+                      {(proj.hasConfig || proj.isManual) && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => openDeleteDialog(proj, { stopPropagation: () => {} })}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete .claude folder
-                          </DropdownMenuItem>
+                          {proj.hasConfig && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => openDeleteDialog(proj, { stopPropagation: () => {} })}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete .claude folder
+                            </DropdownMenuItem>
+                          )}
+                          {proj.isManual && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); setRemoveDialog({ open: true, proj }); }}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Remove sub-project
+                            </DropdownMenuItem>
+                          )}
                         </>
                       )}
                     </DropdownMenuContent>
@@ -341,6 +410,12 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
                       <h3 className="font-semibold text-foreground">{proj.name}</h3>
                       {isCurrentProject && (
                         <Badge variant="default" className="text-xs">Current</Badge>
+                      )}
+                      {proj.isManual && (
+                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                          <Link className="w-3 h-3 mr-1" />
+                          linked
+                        </Badge>
                       )}
                     </div>
                     <div className="flex gap-1">
@@ -365,7 +440,8 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
           })}
           {subprojects.length === 0 && (
             <div className="col-span-full text-center py-8 text-muted-foreground">
-              No sub-projects found in this directory.
+              <p>No sub-projects found.</p>
+              <p className="text-sm mt-1">Click "Add Sub-project" to link an external folder.</p>
             </div>
           )}
         </div>
@@ -432,6 +508,58 @@ export default function SubprojectsView({ project, rootProject, onRefresh }) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteClaudeFolder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Sub-project Dialog */}
+      <Dialog open={addDialog.open} onOpenChange={(open) => setAddDialog({ ...addDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Sub-project</DialogTitle>
+            <DialogDescription>
+              Enter the path to a folder you want to manage as a sub-project. This can be any folder, including external projects.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="/path/to/project or ~/projects/my-app"
+              value={addDialog.path}
+              onChange={(e) => setAddDialog({ ...addDialog, path: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSubproject()}
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Tip: Use ~ for home directory. The folder must exist.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialog({ open: false, path: '' })}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSubproject}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Sub-project Confirmation Dialog */}
+      <AlertDialog open={removeDialog.open} onOpenChange={(open) => setRemoveDialog({ open, proj: removeDialog.proj })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove sub-project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove <strong>{removeDialog.proj?.name}</strong> from your sub-projects list.
+              The folder and its contents will not be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoveSubproject}>
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

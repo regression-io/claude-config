@@ -481,6 +481,20 @@ class ConfigUIServer {
         const subDir = query.dir ? path.resolve(query.dir.replace(/^~/, os.homedir())) : this.projectDir;
         return this.json(res, { subprojects: this.getSubprojectsForDir(subDir) });
 
+      // Add manual sub-project
+      case '/api/subprojects/add':
+        if (req.method === 'POST') {
+          return this.json(res, this.addManualSubproject(body.projectDir, body.subprojectDir));
+        }
+        break;
+
+      // Remove manual sub-project
+      case '/api/subprojects/remove':
+        if (req.method === 'POST') {
+          return this.json(res, this.removeManualSubproject(body.projectDir, body.subprojectDir));
+        }
+        break;
+
       // Switch to a different project context
       case '/api/switch-project':
         if (req.method === 'POST') {
@@ -955,7 +969,99 @@ class ConfigUIServer {
       // Permission denied or other errors - skip
     }
 
+    // Add manual sub-projects from config
+    const manualSubprojects = this.config.manualSubprojects?.[dir] || [];
+    for (const subDir of manualSubprojects) {
+      // Skip if already detected via git
+      if (subprojects.some(p => p.dir === subDir)) continue;
+      // Skip if doesn't exist
+      if (!fs.existsSync(subDir)) continue;
+
+      const name = path.basename(subDir);
+      const hasGit = fs.existsSync(path.join(subDir, '.git'));
+      const hasClaudeDir = fs.existsSync(path.join(subDir, '.claude'));
+      const hasPackageJson = fs.existsSync(path.join(subDir, 'package.json'));
+      const hasPyproject = fs.existsSync(path.join(subDir, 'pyproject.toml'));
+      const hasCargoToml = fs.existsSync(path.join(subDir, 'Cargo.toml'));
+
+      const configPath = path.join(subDir, '.claude', 'mcps.json');
+      const hasConfig = fs.existsSync(configPath);
+      const config = hasConfig ? this.manager.loadJson(configPath) : null;
+
+      // Calculate relative path from project root
+      let relativePath = path.relative(dir, subDir);
+      if (relativePath.startsWith('..')) {
+        // External path - show abbreviated absolute path
+        relativePath = subDir.replace(os.homedir(), '~');
+      }
+
+      subprojects.push({
+        dir: subDir,
+        name,
+        relativePath,
+        hasConfig,
+        isManual: true,  // Flag to indicate manually added
+        markers: {
+          claude: hasClaudeDir,
+          git: hasGit,
+          npm: hasPackageJson,
+          python: hasPyproject,
+          rust: hasCargoToml
+        },
+        mcpCount: config ? (config.include?.length || 0) + Object.keys(config.mcpServers || {}).length : 0
+      });
+    }
+
     return subprojects;
+  }
+
+  /**
+   * Add a manual sub-project
+   */
+  addManualSubproject(projectDir, subprojectDir) {
+    const resolvedProject = path.resolve(projectDir.replace(/^~/, os.homedir()));
+    const resolvedSubproject = path.resolve(subprojectDir.replace(/^~/, os.homedir()));
+
+    if (!fs.existsSync(resolvedSubproject)) {
+      return { success: false, error: 'Directory not found' };
+    }
+
+    // Initialize manualSubprojects if needed
+    if (!this.config.manualSubprojects) {
+      this.config.manualSubprojects = {};
+    }
+    if (!this.config.manualSubprojects[resolvedProject]) {
+      this.config.manualSubprojects[resolvedProject] = [];
+    }
+
+    // Avoid duplicates
+    if (!this.config.manualSubprojects[resolvedProject].includes(resolvedSubproject)) {
+      this.config.manualSubprojects[resolvedProject].push(resolvedSubproject);
+      this.saveConfig(this.config);
+    }
+
+    return { success: true, subprojects: this.getSubprojectsForDir(resolvedProject) };
+  }
+
+  /**
+   * Remove a manual sub-project
+   */
+  removeManualSubproject(projectDir, subprojectDir) {
+    const resolvedProject = path.resolve(projectDir.replace(/^~/, os.homedir()));
+    const resolvedSubproject = path.resolve(subprojectDir.replace(/^~/, os.homedir()));
+
+    if (this.config.manualSubprojects?.[resolvedProject]) {
+      this.config.manualSubprojects[resolvedProject] =
+        this.config.manualSubprojects[resolvedProject].filter(d => d !== resolvedSubproject);
+
+      // Clean up empty arrays
+      if (this.config.manualSubprojects[resolvedProject].length === 0) {
+        delete this.config.manualSubprojects[resolvedProject];
+      }
+      this.saveConfig(this.config);
+    }
+
+    return { success: true, subprojects: this.getSubprojectsForDir(resolvedProject) };
   }
 
   /**

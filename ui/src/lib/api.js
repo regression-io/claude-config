@@ -39,6 +39,22 @@ export const api = {
     return request(`/subprojects?dir=${encodeURIComponent(dir)}`);
   },
 
+  // Add a manual sub-project
+  async addManualSubproject(projectDir, subprojectDir) {
+    return request('/subprojects/add', {
+      method: 'POST',
+      body: { projectDir, subprojectDir },
+    });
+  },
+
+  // Remove a manual sub-project
+  async removeManualSubproject(projectDir, subprojectDir) {
+    return request('/subprojects/remove', {
+      method: 'POST',
+      body: { projectDir, subprojectDir },
+    });
+  },
+
   async switchProject(dir) {
     return request('/switch-project', {
       method: 'POST',
