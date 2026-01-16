@@ -1674,7 +1674,7 @@ class ConfigUIServer {
       };
 
       // Get applied templates
-      folder.appliedTemplates = this.manager.getAppliedTemplates(dir);
+      folder.appliedTemplate = this.manager.getAppliedTemplate(dir);
 
       // Scan .claude folder
       if (folder.exists) {
@@ -1900,7 +1900,7 @@ class ConfigUIServer {
       }
 
       // Always get applied templates for sub-projects
-      subFolder.appliedTemplates = this.manager.getAppliedTemplates(sub.dir);
+      subFolder.appliedTemplate = this.manager.getAppliedTemplate(sub.dir);
       subFolder.isSubproject = true;
       subFolder.hasConfig = sub.hasConfig;
       subFolder.mcpCount = sub.mcpCount || 0;
