@@ -23,6 +23,10 @@ class ConfigUIServer {
     this.configPath = path.join(os.homedir(), '.claude', 'config.json');
     this.config = this.loadConfig();
 
+    // Store server version at startup for change detection
+    this.serverVersion = this.getPackageVersion();
+    this.serverStartTime = Date.now();
+
     // Determine project directory: explicit arg > active project from registry > cwd
     if (projectDir) {
       this.projectDir = path.resolve(projectDir);
@@ -84,6 +88,22 @@ class ConfigUIServer {
     } catch (e) {
       return { error: e.message };
     }
+  }
+
+  // Get version from package.json
+  getPackageVersion() {
+    try {
+      const pkgPath = path.join(__dirname, '..', 'package.json');
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      return pkg.version;
+    } catch (e) {
+      return 'unknown';
+    }
+  }
+
+  // Get current version (fresh read for comparison)
+  getCurrentVersion() {
+    return this.getPackageVersion();
   }
 
   browseDirectory(dirPath, type = 'directory') {
@@ -464,6 +484,36 @@ class ConfigUIServer {
       case '/api/config':
         if (req.method === 'PUT') {
           return this.json(res, this.updateConfig(body));
+        }
+        break;
+
+      // Server version (for update detection)
+      case '/api/version':
+        return this.json(res, {
+          version: this.serverVersion,
+          currentVersion: this.getCurrentVersion(),
+          startTime: this.serverStartTime,
+          needsRestart: this.serverVersion !== this.getCurrentVersion()
+        });
+
+      // Restart server
+      case '/api/restart':
+        if (req.method === 'POST') {
+          // Send response first, then restart
+          this.json(res, { success: true, message: 'Server restarting...' });
+          setTimeout(() => {
+            // Spawn new process with same args
+            const args = process.argv.slice(1);
+            const child = spawn(process.argv[0], args, {
+              detached: true,
+              stdio: 'ignore',
+              cwd: process.cwd(),
+              env: process.env
+            });
+            child.unref();
+            process.exit(0);
+          }, 500);
+          return;
         }
         break;
 
@@ -1765,6 +1815,27 @@ class ConfigUIServer {
           }
         }
 
+        // Check for memory folder
+        const memoryDir = path.join(claudeDir, 'memory');
+        if (fs.existsSync(memoryDir)) {
+          const memoryFiles = fs.readdirSync(memoryDir)
+            .filter(f => f.endsWith('.md'))
+            .map(f => ({
+              name: f,
+              path: path.join(memoryDir, f),
+              type: 'memory',
+              size: fs.statSync(path.join(memoryDir, f)).size
+            }));
+          if (memoryFiles.length > 0) {
+            folder.files.push({
+              name: 'memory',
+              path: memoryDir,
+              type: 'folder',
+              children: memoryFiles
+            });
+          }
+        }
+
         // Check for CLAUDE.md inside .claude folder
         const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
         if (fs.existsSync(claudeMdPath)) {
@@ -2034,6 +2105,27 @@ class ConfigUIServer {
             path: workflowsDir,
             type: 'folder',
             children: workflows
+          });
+        }
+      }
+
+      // Memory
+      const memoryDir = path.join(claudeDir, 'memory');
+      if (fs.existsSync(memoryDir)) {
+        const memoryFiles = fs.readdirSync(memoryDir)
+          .filter(f => f.endsWith('.md'))
+          .map(f => ({
+            name: f,
+            path: path.join(memoryDir, f),
+            type: 'memory',
+            size: fs.statSync(path.join(memoryDir, f)).size
+          }));
+        if (memoryFiles.length > 0) {
+          folder.files.push({
+            name: 'memory',
+            path: memoryDir,
+            type: 'folder',
+            children: memoryFiles
           });
         }
       }

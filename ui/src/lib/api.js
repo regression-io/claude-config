@@ -398,6 +398,18 @@ export const api = {
       body: { path, type },
     });
   },
+
+  // Server version (for update detection)
+  async getVersion() {
+    return request('/version');
+  },
+
+  // Restart server
+  async restartServer() {
+    return request('/restart', {
+      method: 'POST',
+    });
+  },
 };
 
 export default api;

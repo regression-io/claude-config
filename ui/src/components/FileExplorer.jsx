@@ -57,6 +57,7 @@ import {
   ArrowLeftRight,
   FileCode,
   Layout,
+  Brain,
 } from 'lucide-react';
 
 // File type icons and colors
@@ -108,6 +109,12 @@ const FILE_CONFIG = {
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50',
     label: '.env',
+  },
+  memory: {
+    icon: Brain,
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-50',
+    label: 'Memory',
   },
   folder: {
     icon: Folder,
@@ -179,6 +186,7 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
   const hasSettings = folder.files?.some(f => f.name === 'settings.json');
   const hasClaudeMd = folder.files?.some(f => f.name === 'CLAUDE.md' || f.name === 'CLAUDE.md (root)');
   const hasEnv = folder.files?.some(f => f.name === '.env');
+  const hasMemory = folder.files?.some(f => f.name === 'memory');
 
   // Determine folder styling
   const getBgColor = () => {
@@ -233,7 +241,7 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
           <Badge variant="outline" className="text-[10px] px-1 py-0">no config</Badge>
         )}
         {/* Applied template badge */}
-        {folder.appliedTemplate && (
+        {folder.appliedTemplate?.template && (
           <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-700">
             {folder.appliedTemplate.template.split('/').pop()}
           </Badge>
@@ -300,6 +308,15 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
               <FileText className="w-4 h-4 mr-2" />
               CLAUDE.md
               {hasClaudeMd && <span className="ml-auto text-xs text-muted-foreground">exists</span>}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onCreateFile(folder.dir, 'memory'); }}
+              disabled={hasMemory}
+              className={hasMemory ? 'opacity-50' : ''}
+            >
+              <Brain className="w-4 h-4 mr-2" />
+              Memory
+              {hasMemory && <span className="ml-auto text-xs text-muted-foreground">exists</span>}
             </DropdownMenuItem>
             {/* Only show Apply Template for sub-projects, or for home/root when no sub-projects exist */}
             {templates && templates.length > 0 && (isSubproject || !hasSubprojects) && (
@@ -1011,6 +1028,18 @@ export default function FileExplorer({ project, onRefresh }) {
         loadData();
       } catch (error) {
         toast.error('Failed to apply template: ' + error.message);
+      }
+      return;
+    }
+
+    if (type === 'memory') {
+      // Initialize memory folder
+      try {
+        await api.initProjectMemory(dir);
+        toast.success('Memory folder initialized');
+        loadData();
+      } catch (error) {
+        toast.error('Failed to init memory: ' + error.message);
       }
       return;
     }
