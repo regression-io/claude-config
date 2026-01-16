@@ -2107,6 +2107,7 @@ class ConfigUIServer {
       subFolder.isSubproject = true;
       subFolder.hasConfig = sub.hasConfig;
       subFolder.mcpCount = sub.mcpCount || 0;
+      subFolder.isManual = sub.isManual || false;
       folders.push(subFolder);
     }
 
