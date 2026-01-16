@@ -254,11 +254,6 @@ function FolderRow({ folder, isExpanded, isHome, isProject, isSubproject, onTogg
                   {folder.appliedTemplate.template.split('/').pop()}
                 </Badge>
               )}
-              {totalFiles > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {totalFiles} files
-                </Badge>
-              )}
               {!isSubproject && folder.exists && !folder.appliedTemplate?.template && totalFiles === 0 && (
                 <span className="text-[10px] text-muted-foreground">configured</span>
               )}
