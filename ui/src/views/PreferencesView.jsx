@@ -689,7 +689,7 @@ export default function PreferencesView() {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea className="h-[60vh]">
               <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
                 <ReactMarkdown
                   components={{
