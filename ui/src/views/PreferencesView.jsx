@@ -677,8 +677,8 @@ export default function PreferencesView() {
 
       {/* Changelog Dialog */}
       <Dialog open={changelogDialog.open} onOpenChange={(open) => setChangelogDialog(prev => ({ ...prev, open }))}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <History className="w-5 h-5" />
               Changelog
@@ -689,8 +689,8 @@ export default function PreferencesView() {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
-            <ScrollArea className="flex-1 pr-4">
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
                 <ReactMarkdown
                   components={{
                     h1: ({children}) => <h1 className="text-xl font-bold text-foreground mb-4">{children}</h1>,
