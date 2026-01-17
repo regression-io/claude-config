@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Wrench, Folder, Layout, FileText, Save, Loader2, RefreshCw, Download, FolderOpen, Plus, X, FolderPlus, Cpu, Sparkles, Bot, Terminal, Eye, EyeOff, History } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -689,9 +690,23 @@ export default function PreferencesView() {
             </div>
           ) : (
             <ScrollArea className="flex-1 pr-4">
-              <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
-                {changelogDialog.content}
-              </pre>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown
+                  components={{
+                    h1: ({children}) => <h1 className="text-xl font-bold text-foreground mb-4">{children}</h1>,
+                    h2: ({children}) => <h2 className="text-lg font-semibold text-foreground mt-6 mb-3 pb-2 border-b border-border">{children}</h2>,
+                    h3: ({children}) => <h3 className="text-base font-medium text-foreground mt-4 mb-2">{children}</h3>,
+                    p: ({children}) => <p className="text-sm text-muted-foreground mb-2">{children}</p>,
+                    ul: ({children}) => <ul className="text-sm text-muted-foreground list-disc pl-5 mb-3 space-y-1">{children}</ul>,
+                    li: ({children}) => <li className="text-sm">{children}</li>,
+                    code: ({children}) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                    hr: () => <hr className="my-4 border-border" />,
+                    strong: ({children}) => <strong className="font-semibold text-foreground">{children}</strong>,
+                  }}
+                >
+                  {changelogDialog.content}
+                </ReactMarkdown>
+              </div>
             </ScrollArea>
           )}
         </DialogContent>

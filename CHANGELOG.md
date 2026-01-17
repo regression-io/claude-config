@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.5] - 2026-01-17
+
+### Fixed
+
+- **Preferences Persistence** - Tool toggles now auto-save immediately
+  - Gemini CLI, Claude Code, Antigravity toggles save without manual save button
+  - Shows toast feedback when toggling tools
+  - Reverts state on save error
+
+---
+
+## [0.24.4] - 2026-01-17
+
+### Added
+
+- **Auto-Apply Config** - Config changes now apply automatically
+  - Saving `.claude/mcps.json` auto-generates `.mcp.json`
+  - Updating registry auto-applies to current project
+  - No need to manually click Apply Config
+
+### Changed
+
+- Apply Config button changed to subtle "Re-apply" for manual override
+
+---
+
+## [0.24.3] - 2026-01-17
+
+### Fixed
+
+- **Plugin Duplicates** - Removed duplicate plugins from marketplace
+  - Plugins with source pointing to `external_plugins/` now correctly marked as external
+  - Skip duplicate entries when scanning external_plugins directory
+  - Reduced from 59 duplicates to 37 unique plugins
+
+### Added
+
+- **Changelog Popup** - View changelog from About section in Preferences
+  - Click "Changelog" link to open dialog
+  - Markdown rendering for better readability
+
+### Changed
+
+- Improved marketplace format examples in Add Marketplace dialog
+
+---
+
+## [0.24.2] - 2026-01-17
+
+### Added
+
+- **Documentation Updates**
+  - CHANGELOG entries for v0.22.0, v0.23.0, v0.24.0
+  - Plugins section in README
+  - Gemini CLI added to Web UI features list
+
+---
+
+## [0.24.1] - 2026-01-17
+
+### Fixed
+
+- Plugin install passing `name@marketplace` twice (doubled marketplace suffix)
+
+---
+
 ## [0.24.0] - 2026-01-17
 
 ### Added
@@ -22,6 +88,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugins install from project context (Project Explorer) rather than global Plugins page
 - PluginsView redesigned as discovery/browse view with filtering and sorting
 
+### Fixed
+
+- PluginsView rendering object as React child (mp.source was object not string)
+- Claude plugin CLI commands (`plugins` → `plugin` singular)
+
+---
+
+## [0.23.5] - 2026-01-16
+
+### Fixed
+
+- isManual flag propagation for manual sub-projects
+
+---
+
+## [0.23.4] - 2026-01-16
+
+### Changed
+
+- Use PathPicker for Add Sub-project dialog
+- Add Sub-project available on sub-projects too (nested support)
+
+---
+
+## [0.23.3] - 2026-01-16
+
+### Changed
+
+- Move Add Sub-project to FileExplorer context menu
+- Nested sub-projects (depth 2+) displayed in grey color
+
+---
+
+## [0.23.2] - 2026-01-16
+
+### Fixed
+
+- applyTemplate argument order in template suggestion
+
+---
+
+## [0.23.1] - 2026-01-16
+
+### Added
+
+- **Auto-Detect Template** - Suggests templates for sub-projects based on project type
+
 ---
 
 ## [0.23.0] - 2026-01-16
@@ -35,7 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Hide/Unhide Sub-Projects** - Hide auto-detected sub-projects you don't need
   - Right-click → Hide to remove from view
-  - Hidden sub-projects stored per-project
+  - Hidden sub-projects stored per-project in `~/.claude-config/config.json`
   - Unhide from Preferences or context menu
 
 - **Nested Sub-Project Hierarchy** - Support for multiple levels of nesting
@@ -43,15 +156,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Grey color for deeply nested items
   - Full tree navigation
 
-- **Template Auto-Detection** - Suggest templates for sub-projects
-  - Detects project type (Python, Node, etc.) from files
-  - Shows "Apply Template" suggestion when entering unconfigured sub-project
-
 ### Changed
 
 - Renamed "Switch" to "Select" in All Projects view
 - FileExplorer redesigned as collapsible tree view
 - Improved panel widths and scrollbar handling
+- Hide + menu when template already applied, show badge only
+- Replace "sub" badge with "root" badge on root project
+
+### Fixed
+
+- Service Worker caching issues
+- Preferences persistence and update UX
+- Memory creating individual files like rules/commands
+
+---
+
+## [0.22.7] - 2026-01-16
+
+### Added
+
+- Server version check and restart capability
+- Memory option in Project Explorer menu
+
+---
+
+## [0.22.5] - 2026-01-16
+
+### Added
+
+- Track applied templates in `.claude/templates.json`
+
+### Fixed
+
+- getAppliedTemplate function name mismatch
+
+---
+
+## [0.22.3] - 2026-01-16
+
+### Changed
+
+- Redesign FileExplorer as collapsible tree view
+- UX improvements: default to root project, hide Apply Template for root when sub-projects exist
+
+---
+
+## [0.22.1] - 2026-01-16
+
+### Added
+
+- MCP management to GeminiSettingsEditor
+- Show all sub-projects in tree view
+
+### Fixed
+
+- Pass filePath to SettingsEditor to detect Gemini vs Claude
+- Show GeminiSettingsEditor when clicking Gemini's settings.json
 
 ---
 
@@ -76,6 +237,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Project Explorer shows unified tree of all .claude folders
 - Template tracking via `.claude/templates.json`
+
+---
+
+## [0.21.5] - 2026-01-16
+
+### Added
+
+- GeminiSettingsView for Gemini CLI settings
+
+---
+
+## [0.21.3] - 2026-01-16
+
+### Fixed
+
+- Each AI tool now reads from its own config folder
+
+---
+
+## [0.21.1] - 2026-01-16
+
+### Added
+
+- Gemini CLI as drop-in AI assistant option
+
+---
+
+## [0.21.0] - 2026-01-16
+
+### Added
+
+- **Gemini CLI Support** - Alongside Claude Code and Antigravity
+  - Configure multiple AI coding assistants
+  - Tool selector in Preferences
+
+---
+
+## [0.20.5] - 2026-01-15
+
+### Added
+
+- Dark mode support for Claude Code settings and permissions views
 
 ---
 
@@ -145,7 +348,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.13.0] - 2025-01-15
+## [0.13.0] - 2026-01-15
 
 ### Added
 
@@ -186,7 +389,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-01-14
+## [1.0.0] - 2026-01-14
 
 ### Added
 
