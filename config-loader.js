@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const VERSION = '0.24.10';
+const VERSION = '0.30.1';
 
 // Tool-specific path configurations
 const TOOL_PATHS = {
@@ -1803,6 +1803,329 @@ class ClaudeConfigManager {
     console.log(`✓ Removed project: ${removed.name}`);
     return true;
   }
+
+  // ===========================================================================
+  // WORKSTREAMS
+  // ===========================================================================
+
+  /**
+   * Get workstreams file path
+   */
+  getWorkstreamsPath() {
+    return path.join(this.installDir, 'workstreams.json');
+  }
+
+  /**
+   * Load workstreams
+   */
+  loadWorkstreams() {
+    const wsPath = this.getWorkstreamsPath();
+    if (fs.existsSync(wsPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(wsPath, 'utf8'));
+      } catch (e) {
+        return { workstreams: [], activeId: null, lastUsedByProject: {} };
+      }
+    }
+    return { workstreams: [], activeId: null, lastUsedByProject: {} };
+  }
+
+  /**
+   * Save workstreams
+   */
+  saveWorkstreams(data) {
+    const wsPath = this.getWorkstreamsPath();
+    const dir = path.dirname(wsPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(wsPath, JSON.stringify(data, null, 2) + '\n');
+  }
+
+  /**
+   * List all workstreams
+   */
+  workstreamList() {
+    const data = this.loadWorkstreams();
+
+    if (data.workstreams.length === 0) {
+      console.log('\nNo workstreams defined.');
+      console.log('Create one with: claude-config workstream create "Name"\n');
+      return data.workstreams;
+    }
+
+    console.log('\n📋 Workstreams:\n');
+    for (const ws of data.workstreams) {
+      const active = ws.id === data.activeId ? '● ' : '○ ';
+      console.log(`${active}${ws.name}`);
+      if (ws.projects && ws.projects.length > 0) {
+        console.log(`    Projects: ${ws.projects.map(p => path.basename(p)).join(', ')}`);
+      }
+      if (ws.rules) {
+        const preview = ws.rules.substring(0, 60).replace(/\n/g, ' ');
+        console.log(`    Rules: ${preview}${ws.rules.length > 60 ? '...' : ''}`);
+      }
+    }
+    console.log('');
+    return data.workstreams;
+  }
+
+  /**
+   * Create a new workstream
+   */
+  workstreamCreate(name, projects = [], rules = '') {
+    if (!name) {
+      console.error('Usage: claude-config workstream create "Name"');
+      return null;
+    }
+
+    const data = this.loadWorkstreams();
+
+    // Check for duplicate name
+    if (data.workstreams.some(ws => ws.name.toLowerCase() === name.toLowerCase())) {
+      console.error(`Workstream "${name}" already exists`);
+      return null;
+    }
+
+    const workstream = {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      name,
+      projects: projects.map(p => path.resolve(p.replace(/^~/, process.env.HOME || ''))),
+      rules: rules || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    data.workstreams.push(workstream);
+
+    // If first workstream, make it active
+    if (!data.activeId) {
+      data.activeId = workstream.id;
+    }
+
+    this.saveWorkstreams(data);
+    console.log(`✓ Created workstream: ${name}`);
+    return workstream;
+  }
+
+  /**
+   * Update a workstream
+   */
+  workstreamUpdate(idOrName, updates) {
+    const data = this.loadWorkstreams();
+    const ws = data.workstreams.find(
+      w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase()
+    );
+
+    if (!ws) {
+      console.error(`Workstream not found: ${idOrName}`);
+      return null;
+    }
+
+    if (updates.name !== undefined) ws.name = updates.name;
+    if (updates.projects !== undefined) {
+      ws.projects = updates.projects.map(p =>
+        path.resolve(p.replace(/^~/, process.env.HOME || ''))
+      );
+    }
+    if (updates.rules !== undefined) ws.rules = updates.rules;
+    ws.updatedAt = new Date().toISOString();
+
+    this.saveWorkstreams(data);
+    console.log(`✓ Updated workstream: ${ws.name}`);
+    return ws;
+  }
+
+  /**
+   * Delete a workstream
+   */
+  workstreamDelete(idOrName) {
+    const data = this.loadWorkstreams();
+    const idx = data.workstreams.findIndex(
+      w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase()
+    );
+
+    if (idx === -1) {
+      console.error(`Workstream not found: ${idOrName}`);
+      return false;
+    }
+
+    const removed = data.workstreams.splice(idx, 1)[0];
+
+    // If removed active workstream, select first remaining
+    if (data.activeId === removed.id) {
+      data.activeId = data.workstreams[0]?.id || null;
+    }
+
+    this.saveWorkstreams(data);
+    console.log(`✓ Deleted workstream: ${removed.name}`);
+    return true;
+  }
+
+  /**
+   * Set active workstream
+   */
+  workstreamUse(idOrName) {
+    const data = this.loadWorkstreams();
+
+    if (!idOrName) {
+      // Show current active
+      const active = data.workstreams.find(w => w.id === data.activeId);
+      if (active) {
+        console.log(`Active workstream: ${active.name}`);
+      } else {
+        console.log('No active workstream');
+      }
+      return active || null;
+    }
+
+    const ws = data.workstreams.find(
+      w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase()
+    );
+
+    if (!ws) {
+      console.error(`Workstream not found: ${idOrName}`);
+      return null;
+    }
+
+    data.activeId = ws.id;
+    this.saveWorkstreams(data);
+    console.log(`✓ Switched to workstream: ${ws.name}`);
+    return ws;
+  }
+
+  /**
+   * Get active workstream
+   */
+  workstreamActive() {
+    const data = this.loadWorkstreams();
+    return data.workstreams.find(w => w.id === data.activeId) || null;
+  }
+
+  /**
+   * Add project to workstream
+   */
+  workstreamAddProject(idOrName, projectPath) {
+    const data = this.loadWorkstreams();
+    const ws = data.workstreams.find(
+      w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase()
+    );
+
+    if (!ws) {
+      console.error(`Workstream not found: ${idOrName}`);
+      return null;
+    }
+
+    const absPath = path.resolve(projectPath.replace(/^~/, process.env.HOME || ''));
+
+    if (!ws.projects.includes(absPath)) {
+      ws.projects.push(absPath);
+      ws.updatedAt = new Date().toISOString();
+      this.saveWorkstreams(data);
+      console.log(`✓ Added ${path.basename(absPath)} to ${ws.name}`);
+    } else {
+      console.log(`Project already in workstream: ${path.basename(absPath)}`);
+    }
+
+    return ws;
+  }
+
+  /**
+   * Remove project from workstream
+   */
+  workstreamRemoveProject(idOrName, projectPath) {
+    const data = this.loadWorkstreams();
+    const ws = data.workstreams.find(
+      w => w.id === idOrName || w.name.toLowerCase() === idOrName.toLowerCase()
+    );
+
+    if (!ws) {
+      console.error(`Workstream not found: ${idOrName}`);
+      return null;
+    }
+
+    const absPath = path.resolve(projectPath.replace(/^~/, process.env.HOME || ''));
+    const idx = ws.projects.indexOf(absPath);
+
+    if (idx !== -1) {
+      ws.projects.splice(idx, 1);
+      ws.updatedAt = new Date().toISOString();
+      this.saveWorkstreams(data);
+      console.log(`✓ Removed ${path.basename(absPath)} from ${ws.name}`);
+    } else {
+      console.log(`Project not in workstream: ${path.basename(absPath)}`);
+    }
+
+    return ws;
+  }
+
+  /**
+   * Inject active workstream rules into Claude context
+   * Called by pre-prompt hook
+   */
+  workstreamInject(silent = false) {
+    const active = this.workstreamActive();
+
+    if (!active) {
+      if (!silent) console.log('No active workstream');
+      return null;
+    }
+
+    if (!active.rules || active.rules.trim() === '') {
+      if (!silent) console.log(`Workstream "${active.name}" has no rules defined`);
+      return null;
+    }
+
+    // Output rules to stdout for hook to capture
+    const header = `## Active Workstream: ${active.name}\n\n`;
+    const output = header + active.rules;
+
+    if (!silent) {
+      console.log(output);
+    }
+
+    return output;
+  }
+
+  /**
+   * Detect workstream from current directory
+   */
+  workstreamDetect(dir = process.cwd()) {
+    const data = this.loadWorkstreams();
+    const absDir = path.resolve(dir.replace(/^~/, process.env.HOME || ''));
+
+    // Find workstreams that contain this directory or a parent
+    const matches = data.workstreams.filter(ws =>
+      ws.projects.some(p => absDir.startsWith(p) || p.startsWith(absDir))
+    );
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    if (matches.length === 1) {
+      return matches[0];
+    }
+
+    // Multiple matches - check lastUsedByProject
+    if (data.lastUsedByProject && data.lastUsedByProject[absDir]) {
+      const lastUsed = matches.find(ws => ws.id === data.lastUsedByProject[absDir]);
+      if (lastUsed) return lastUsed;
+    }
+
+    // Return most recently updated
+    return matches.sort((a, b) =>
+      new Date(b.updatedAt) - new Date(a.updatedAt)
+    )[0];
+  }
+
+  /**
+   * Get workstream by ID
+   */
+  workstreamGet(id) {
+    const data = this.loadWorkstreams();
+    return data.workstreams.find(w => w.id === id) || null;
+  }
 }
 
 // =============================================================================
@@ -1903,6 +2226,42 @@ if (require.main === module) {
       }
       break;
 
+    // Workstreams
+    case 'workstream':
+    case 'ws':
+      if (args[1] === 'create' || args[1] === 'new') {
+        manager.workstreamCreate(args[2]);
+      } else if (args[1] === 'delete' || args[1] === 'rm') {
+        manager.workstreamDelete(args[2]);
+      } else if (args[1] === 'use' || args[1] === 'switch') {
+        manager.workstreamUse(args[2]);
+      } else if (args[1] === 'add-project') {
+        manager.workstreamAddProject(args[2], args[3]);
+      } else if (args[1] === 'remove-project') {
+        manager.workstreamRemoveProject(args[2], args[3]);
+      } else if (args[1] === 'inject') {
+        const silent = args.includes('--silent') || args.includes('-s');
+        manager.workstreamInject(silent);
+      } else if (args[1] === 'detect') {
+        const ws = manager.workstreamDetect(args[2] || process.cwd());
+        if (ws) {
+          console.log(ws.name);
+        }
+      } else if (args[1] === 'active') {
+        const ws = manager.workstreamActive();
+        if (ws) {
+          console.log(`Active: ${ws.name}`);
+          if (ws.projects.length > 0) {
+            console.log(`Projects: ${ws.projects.map(p => path.basename(p)).join(', ')}`);
+          }
+        } else {
+          console.log('No active workstream');
+        }
+      } else {
+        manager.workstreamList();
+      }
+      break;
+
     // Maintenance
     case 'update':
       manager.update(args[1]);
@@ -1955,6 +2314,17 @@ Project Commands (for UI):
   project add [path]           Add project (defaults to cwd)
   project add [path] --name X  Add with custom display name
   project remove <name|path>   Remove project from registry
+
+Workstream Commands:
+  workstream                   List all workstreams
+  workstream create "Name"     Create new workstream
+  workstream delete <name>     Delete workstream
+  workstream use <name>        Set active workstream
+  workstream active            Show current active workstream
+  workstream add-project <ws> <path>     Add project to workstream
+  workstream remove-project <ws> <path>  Remove project from workstream
+  workstream inject [--silent] Output active workstream rules (for hooks)
+  workstream detect [path]     Detect workstream for directory
 
 Registry Commands:
   registry-add <name> '<json>'   Add MCP to global registry

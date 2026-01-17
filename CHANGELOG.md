@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-01-17
+
+### Added
+
+- **Workstreams** - Context sets for multi-project workflows
+  - Group related projects and inject context rules into every Claude session
+  - Active workstream indicator in header with quick-switch dropdown
+  - WorkstreamsView UI for creating, editing, deleting workstreams
+  - Add/remove projects from workstreams
+  - Rules editor per workstream
+  - CLI commands: `workstream create`, `use`, `inject`, `detect`, etc.
+  - Pre-prompt hook integration for automatic rule injection
+  - Sample hook script at `hooks/workstream-inject.sh`
+
+### Changed
+
+- Bumped to v0.30.0 for major new feature
+
+---
+
 ## [0.24.9] - 2026-01-17
 
 ### Fixed

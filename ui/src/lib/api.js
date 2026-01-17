@@ -502,6 +502,67 @@ export const api = {
       body: { name },
     });
   },
+
+  // Workstreams
+  async getWorkstreams() {
+    return request('/workstreams');
+  },
+
+  async getActiveWorkstream() {
+    return request('/workstreams/active');
+  },
+
+  async setActiveWorkstream(id) {
+    return request('/workstreams/active', {
+      method: 'PUT',
+      body: { id },
+    });
+  },
+
+  async createWorkstream(name, projects = [], rules = '') {
+    return request('/workstreams', {
+      method: 'POST',
+      body: { name, projects, rules },
+    });
+  },
+
+  async updateWorkstream(id, updates) {
+    return request(`/workstreams/${id}`, {
+      method: 'PUT',
+      body: updates,
+    });
+  },
+
+  async deleteWorkstream(id) {
+    return request(`/workstreams/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async addProjectToWorkstream(workstreamId, projectPath) {
+    return request(`/workstreams/${workstreamId}/add-project`, {
+      method: 'POST',
+      body: { projectPath },
+    });
+  },
+
+  async removeProjectFromWorkstream(workstreamId, projectPath) {
+    return request(`/workstreams/${workstreamId}/remove-project`, {
+      method: 'POST',
+      body: { projectPath },
+    });
+  },
+
+  async injectWorkstream() {
+    return request('/workstreams/inject');
+  },
+
+  async detectWorkstream(dir) {
+    return request('/workstreams/detect', {
+      method: 'POST',
+      body: { dir },
+    });
+  },
 };
 
 export default api;

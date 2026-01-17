@@ -370,6 +370,129 @@ class ConfigUIServer {
     };
   }
 
+  // ===========================================================================
+  // WORKSTREAMS
+  // ===========================================================================
+
+  /**
+   * Get all workstreams
+   */
+  getWorkstreams() {
+    if (!this.manager) return { error: 'Manager not available' };
+    const data = this.manager.loadWorkstreams();
+    return {
+      workstreams: data.workstreams,
+      activeId: data.activeId,
+      lastUsedByProject: data.lastUsedByProject || {}
+    };
+  }
+
+  /**
+   * Get active workstream
+   */
+  getActiveWorkstream() {
+    if (!this.manager) return { error: 'Manager not available' };
+    const active = this.manager.workstreamActive();
+    return { workstream: active };
+  }
+
+  /**
+   * Set active workstream
+   */
+  setActiveWorkstream(id) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const ws = this.manager.workstreamUse(id);
+    if (!ws) {
+      return { error: 'Workstream not found' };
+    }
+    return { success: true, workstream: ws };
+  }
+
+  /**
+   * Create a new workstream
+   */
+  createWorkstream(body) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const { name, projects = [], rules = '' } = body;
+
+    if (!name) {
+      return { error: 'Name is required' };
+    }
+
+    const ws = this.manager.workstreamCreate(name, projects, rules);
+    if (!ws) {
+      return { error: 'Failed to create workstream (name may already exist)' };
+    }
+
+    return { success: true, workstream: ws };
+  }
+
+  /**
+   * Update a workstream
+   */
+  updateWorkstream(id, updates) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const ws = this.manager.workstreamUpdate(id, updates);
+    if (!ws) {
+      return { error: 'Workstream not found' };
+    }
+    return { success: true, workstream: ws };
+  }
+
+  /**
+   * Delete a workstream
+   */
+  deleteWorkstream(id) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const success = this.manager.workstreamDelete(id);
+    if (!success) {
+      return { error: 'Workstream not found' };
+    }
+    return { success: true };
+  }
+
+  /**
+   * Add project to workstream
+   */
+  addProjectToWorkstream(workstreamId, projectPath) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const ws = this.manager.workstreamAddProject(workstreamId, projectPath);
+    if (!ws) {
+      return { error: 'Workstream not found' };
+    }
+    return { success: true, workstream: ws };
+  }
+
+  /**
+   * Remove project from workstream
+   */
+  removeProjectFromWorkstream(workstreamId, projectPath) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const ws = this.manager.workstreamRemoveProject(workstreamId, projectPath);
+    if (!ws) {
+      return { error: 'Workstream not found' };
+    }
+    return { success: true, workstream: ws };
+  }
+
+  /**
+   * Inject active workstream rules (for hooks)
+   */
+  injectWorkstream() {
+    if (!this.manager) return { error: 'Manager not available' };
+    const output = this.manager.workstreamInject(true);
+    return { rules: output };
+  }
+
+  /**
+   * Detect workstream from directory
+   */
+  detectWorkstream(dir) {
+    if (!this.manager) return { error: 'Manager not available' };
+    const ws = this.manager.workstreamDetect(dir || this.projectDir);
+    return { workstream: ws };
+  }
+
   start() {
     const server = http.createServer((req, res) => this.handleRequest(req, res));
 
@@ -920,6 +1043,59 @@ class ConfigUIServer {
           return this.json(res, this.setActiveProject(body.id));
         }
         break;
+
+      // Workstreams
+      case '/api/workstreams':
+        if (req.method === 'GET') {
+          return this.json(res, this.getWorkstreams());
+        }
+        if (req.method === 'POST') {
+          return this.json(res, this.createWorkstream(body));
+        }
+        break;
+
+      case '/api/workstreams/active':
+        if (req.method === 'GET') {
+          return this.json(res, this.getActiveWorkstream());
+        }
+        if (req.method === 'PUT') {
+          return this.json(res, this.setActiveWorkstream(body.id));
+        }
+        break;
+
+      case '/api/workstreams/inject':
+        if (req.method === 'GET') {
+          return this.json(res, this.injectWorkstream());
+        }
+        break;
+
+      case '/api/workstreams/detect':
+        if (req.method === 'POST') {
+          return this.json(res, this.detectWorkstream(body.dir));
+        }
+        break;
+    }
+
+    // Dynamic route for workstream operations: /api/workstreams/:id
+    if (pathname.startsWith('/api/workstreams/') && !pathname.includes('/active') && !pathname.includes('/inject') && !pathname.includes('/detect')) {
+      const parts = pathname.split('/');
+      const workstreamId = parts[3];
+      const action = parts[4];
+
+      if (workstreamId) {
+        if (req.method === 'PUT' && !action) {
+          return this.json(res, this.updateWorkstream(workstreamId, body));
+        }
+        if (req.method === 'DELETE' && !action) {
+          return this.json(res, this.deleteWorkstream(workstreamId));
+        }
+        if (req.method === 'POST' && action === 'add-project') {
+          return this.json(res, this.addProjectToWorkstream(workstreamId, body.projectPath));
+        }
+        if (req.method === 'POST' && action === 'remove-project') {
+          return this.json(res, this.removeProjectFromWorkstream(workstreamId, body.projectPath));
+        }
+      }
     }
 
     // Dynamic route for project deletion: DELETE /api/projects/:id

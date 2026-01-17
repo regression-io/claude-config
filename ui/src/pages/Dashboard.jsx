@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, Package, Layout, RefreshCw, Rocket, Terminal,
-  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen, Puzzle
+  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen, Puzzle, Workflow
 } from 'lucide-react';
 import FileExplorer from "@/components/FileExplorer";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
+import WorkstreamSwitcher from "@/components/WorkstreamSwitcher";
 import AddProjectDialog from "@/components/AddProjectDialog";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,13 @@ import {
   MemoryView,
   ProjectsView,
   DocsView,
-  PluginsView
+  PluginsView,
+  WorkstreamsView
 } from "@/views";
 
 const navItems = [
   { id: 'projects', label: 'All Projects', icon: Layers, section: 'Projects' },
+  { id: 'workstreams', label: 'Workstreams', icon: Workflow, section: 'Projects' },
   { id: 'explorer', label: 'Project Explorer', icon: FolderOpen, section: 'Projects' },
   { id: 'registry', label: 'MCP Registry', icon: Package, section: 'Configuration' },
   { id: 'plugins', label: 'Plugins', icon: Puzzle, section: 'Configuration' },
@@ -325,6 +328,10 @@ export default function Dashboard() {
           loadData();
           loadProjects();
         }} />;
+      case 'workstreams':
+        return <WorkstreamsView projects={projects} onWorkstreamChange={(ws) => {
+          toast.success(`Switched to workstream: ${ws.name}`);
+        }} />;
       case 'docs':
         return <DocsView />;
       default:
@@ -370,6 +377,9 @@ export default function Dashboard() {
               onSwitch={handleSwitchProject}
               onAddClick={() => setAddProjectOpen(true)}
               onManageClick={() => setCurrentView('projects')}
+            />
+            <WorkstreamSwitcher
+              onManageClick={() => setCurrentView('workstreams')}
             />
           </div>
 
