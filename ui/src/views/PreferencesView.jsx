@@ -156,15 +156,33 @@ export default function PreferencesView() {
     }));
   };
 
-  const toggleTool = (tool) => {
+  const toggleTool = async (tool) => {
     const currentTools = config?.enabledTools || ['claude'];
+    let newTools;
+
     if (currentTools.includes(tool)) {
       // Don't allow disabling all tools
-      if (currentTools.length > 1) {
-        updateConfig('enabledTools', currentTools.filter(t => t !== tool));
+      if (currentTools.length <= 1) {
+        toast.error('At least one tool must be enabled');
+        return;
       }
+      newTools = currentTools.filter(t => t !== tool);
     } else {
-      updateConfig('enabledTools', [...currentTools, tool]);
+      newTools = [...currentTools, tool];
+    }
+
+    // Update local state
+    const newConfig = { ...config, enabledTools: newTools };
+    setConfig(newConfig);
+
+    // Auto-save immediately
+    try {
+      await api.saveConfig(newConfig);
+      toast.success(`${tool === 'claude' ? 'Claude Code' : tool === 'gemini' ? 'Gemini CLI' : 'Antigravity'} ${newTools.includes(tool) ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      // Revert on error
+      setConfig(config);
+      toast.error('Failed to save preference');
     }
   };
 
