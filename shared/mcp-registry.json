@@ -10,17 +10,6 @@
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
     },
-    "gitlab": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-gitlab"
-      ],
-      "env": {
-        "GITLAB_TOKEN": "${GITLAB_TOKEN}",
-        "GITLAB_URL": "${GITLAB_URL}"
-      }
-    },
     "slack": {
       "command": "npx",
       "args": [
@@ -30,26 +19,6 @@
       "env": {
         "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
         "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
-      }
-    },
-    "postgres": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-postgres"
-      ],
-      "env": {
-        "DATABASE_URL": "${DATABASE_URL}"
-      }
-    },
-    "sqlite": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sqlite"
-      ],
-      "env": {
-        "SQLITE_PATH": "${SQLITE_PATH}"
       }
     },
     "filesystem": {
@@ -66,23 +35,6 @@
         "-y",
         "@modelcontextprotocol/server-memory"
       ]
-    },
-    "puppeteer": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-puppeteer"
-      ]
-    },
-    "brave-search": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-brave-search"
-      ],
-      "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      }
     },
     "fetch": {
       "command": "npx",

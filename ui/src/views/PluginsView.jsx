@@ -485,7 +485,9 @@ export default function PluginsView() {
                       <RefreshCw className={`w-4 h-4 text-purple-600 dark:text-purple-400 ${refreshing === mp.name ? 'animate-spin' : ''}`} />
                     </Button>
                   </div>
-                  <p className="text-sm text-purple-700 dark:text-purple-300 mb-2 truncate">{mp.source}</p>
+                  <p className="text-sm text-purple-700 dark:text-purple-300 mb-2 truncate">
+                    {typeof mp.source === 'string' ? mp.source : mp.source?.repo || 'Unknown source'}
+                  </p>
                   <div className="flex items-center justify-between text-xs text-purple-600 dark:text-purple-400">
                     <span>{mp.plugins?.length || 0} plugins</span>
                     {mp.lastUpdated && (
