@@ -580,6 +580,40 @@ class ConfigUIServer {
         }
         break;
 
+      // Claude Code Plugins
+      case '/api/plugins':
+        if (req.method === 'GET') {
+          return this.json(res, this.getPlugins());
+        }
+        break;
+
+      case '/api/plugins/install':
+        if (req.method === 'POST') {
+          return this.json(res, await this.installPlugin(body.pluginId, body.marketplace));
+        }
+        break;
+
+      case '/api/plugins/uninstall':
+        if (req.method === 'POST') {
+          return this.json(res, await this.uninstallPlugin(body.pluginId));
+        }
+        break;
+
+      case '/api/plugins/marketplaces':
+        if (req.method === 'GET') {
+          return this.json(res, this.getMarketplaces());
+        }
+        if (req.method === 'POST') {
+          return this.json(res, await this.addMarketplace(body.name, body.repo));
+        }
+        break;
+
+      case '/api/plugins/marketplaces/refresh':
+        if (req.method === 'POST') {
+          return this.json(res, await this.refreshMarketplace(body.name));
+        }
+        break;
+
       // Rules
       case '/api/rules':
         return this.json(res, this.getRules());
@@ -1352,6 +1386,194 @@ class ConfigUIServer {
     this.manager.saveJson(this.manager.registryPath, body);
     return { success: true };
   }
+
+  // ==================== Claude Code Plugins ====================
+
+  getPluginsDir() {
+    return path.join(os.homedir(), '.claude', 'plugins');
+  }
+
+  getPlugins() {
+    const pluginsDir = this.getPluginsDir();
+    const installedPath = path.join(pluginsDir, 'installed_plugins.json');
+    const marketplacesPath = path.join(pluginsDir, 'known_marketplaces.json');
+
+    // Load installed plugins
+    let installed = {};
+    if (fs.existsSync(installedPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(installedPath, 'utf8'));
+        installed = data.plugins || {};
+      } catch (e) {}
+    }
+
+    // Load marketplaces and their plugins
+    const marketplaces = [];
+    if (fs.existsSync(marketplacesPath)) {
+      try {
+        const known = JSON.parse(fs.readFileSync(marketplacesPath, 'utf8'));
+        for (const [name, info] of Object.entries(known)) {
+          const marketplace = {
+            name,
+            source: info.source,
+            installLocation: info.installLocation,
+            lastUpdated: info.lastUpdated,
+            plugins: []
+          };
+
+          // Load marketplace manifest
+          const manifestPath = path.join(info.installLocation, '.claude-plugin', 'marketplace.json');
+          if (fs.existsSync(manifestPath)) {
+            try {
+              const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+              marketplace.description = manifest.description;
+              marketplace.owner = manifest.owner;
+              marketplace.plugins = (manifest.plugins || []).map(p => ({
+                ...p,
+                marketplace: name,
+                installed: !!installed[`${p.name}@${name}`],
+                installedInfo: installed[`${p.name}@${name}`]?.[0] || null
+              }));
+            } catch (e) {}
+          }
+
+          marketplaces.push(marketplace);
+        }
+      } catch (e) {}
+    }
+
+    return {
+      installed,
+      marketplaces,
+      pluginsDir
+    };
+  }
+
+  getMarketplaces() {
+    const pluginsDir = this.getPluginsDir();
+    const marketplacesPath = path.join(pluginsDir, 'known_marketplaces.json');
+
+    if (fs.existsSync(marketplacesPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(marketplacesPath, 'utf8'));
+      } catch (e) {}
+    }
+    return {};
+  }
+
+  async installPlugin(pluginId, marketplace) {
+    // Use claude CLI to install
+    return new Promise((resolve) => {
+      const proc = spawn('claude', ['plugins', 'install', `${pluginId}@${marketplace}`], {
+        cwd: os.homedir(),
+        env: process.env
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout?.on('data', (data) => { stdout += data.toString(); });
+      proc.stderr?.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, message: stdout || 'Plugin installed' });
+        } else {
+          resolve({ success: false, error: stderr || stdout || 'Installation failed' });
+        }
+      });
+
+      proc.on('error', (err) => {
+        resolve({ success: false, error: err.message });
+      });
+    });
+  }
+
+  async uninstallPlugin(pluginId) {
+    // Use claude CLI to uninstall
+    return new Promise((resolve) => {
+      const proc = spawn('claude', ['plugins', 'uninstall', pluginId], {
+        cwd: os.homedir(),
+        env: process.env
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout?.on('data', (data) => { stdout += data.toString(); });
+      proc.stderr?.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, message: stdout || 'Plugin uninstalled' });
+        } else {
+          resolve({ success: false, error: stderr || stdout || 'Uninstallation failed' });
+        }
+      });
+
+      proc.on('error', (err) => {
+        resolve({ success: false, error: err.message });
+      });
+    });
+  }
+
+  async addMarketplace(name, repo) {
+    // Use claude CLI to add marketplace
+    return new Promise((resolve) => {
+      const proc = spawn('claude', ['plugins', 'marketplace', 'add', name, '--repo', repo], {
+        cwd: os.homedir(),
+        env: process.env
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout?.on('data', (data) => { stdout += data.toString(); });
+      proc.stderr?.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, message: stdout || 'Marketplace added' });
+        } else {
+          resolve({ success: false, error: stderr || stdout || 'Failed to add marketplace' });
+        }
+      });
+
+      proc.on('error', (err) => {
+        resolve({ success: false, error: err.message });
+      });
+    });
+  }
+
+  async refreshMarketplace(name) {
+    // Use claude CLI to refresh/update marketplace
+    return new Promise((resolve) => {
+      const proc = spawn('claude', ['plugins', 'marketplace', 'refresh', name], {
+        cwd: os.homedir(),
+        env: process.env
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout?.on('data', (data) => { stdout += data.toString(); });
+      proc.stderr?.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, message: stdout || 'Marketplace refreshed' });
+        } else {
+          resolve({ success: false, error: stderr || stdout || 'Failed to refresh marketplace' });
+        }
+      });
+
+      proc.on('error', (err) => {
+        resolve({ success: false, error: err.message });
+      });
+    });
+  }
+
+  // ==================== End Plugins ====================
 
   getRules() {
     const configs = this.manager.findAllConfigs(this.projectDir);

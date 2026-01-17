@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, Package, Layout, RefreshCw, Rocket, Terminal,
-  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen
+  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen, Puzzle
 } from 'lucide-react';
 import FileExplorer from "@/components/FileExplorer";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
@@ -23,13 +23,15 @@ import {
   RegistryView,
   MemoryView,
   ProjectsView,
-  DocsView
+  DocsView,
+  PluginsView
 } from "@/views";
 
 const navItems = [
   { id: 'projects', label: 'All Projects', icon: Layers, section: 'Projects' },
   { id: 'explorer', label: 'Project Explorer', icon: FolderOpen, section: 'Projects' },
   { id: 'registry', label: 'MCP Registry', icon: Package, section: 'Configuration' },
+  { id: 'plugins', label: 'Plugins', icon: Puzzle, section: 'Configuration' },
   { id: 'memory', label: 'Memory', icon: Brain, section: 'Configuration' },
   { id: 'claude-settings', label: 'Claude Code', icon: Shield, section: 'Configuration' },
   { id: 'gemini-settings', label: 'Gemini CLI', icon: Terminal, section: 'Configuration' },
@@ -302,6 +304,8 @@ export default function Dashboard() {
         return <FileExplorer project={project} onRefresh={loadData} />;
       case 'registry':
         return <RegistryView registry={registry} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onUpdate={loadData} />;
+      case 'plugins':
+        return <PluginsView />;
       case 'memory':
         return <MemoryView project={project} onUpdate={loadData} />;
       case 'templates':

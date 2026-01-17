@@ -460,6 +460,43 @@ export const api = {
       method: 'POST',
     });
   },
+
+  // Claude Code Plugins
+  async getPlugins() {
+    return request('/plugins');
+  },
+
+  async installPlugin(pluginId, marketplace) {
+    return request('/plugins/install', {
+      method: 'POST',
+      body: { pluginId, marketplace },
+    });
+  },
+
+  async uninstallPlugin(pluginId) {
+    return request('/plugins/uninstall', {
+      method: 'POST',
+      body: { pluginId },
+    });
+  },
+
+  async getMarketplaces() {
+    return request('/plugins/marketplaces');
+  },
+
+  async addMarketplace(name, repo) {
+    return request('/plugins/marketplaces', {
+      method: 'POST',
+      body: { name, repo },
+    });
+  },
+
+  async refreshMarketplace(name) {
+    return request('/plugins/marketplaces/refresh', {
+      method: 'POST',
+      body: { name },
+    });
+  },
 };
 
 export default api;

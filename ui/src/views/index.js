@@ -9,3 +9,4 @@ export { default as RegistryView } from './RegistryView';
 export { default as MemoryView } from './MemoryView';
 export { default as ProjectsView } from './ProjectsView';
 export { default as DocsView } from './DocsView';
+export { default as PluginsView } from './PluginsView';
