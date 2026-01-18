@@ -353,7 +353,6 @@ export default function Dashboard() {
               <div>
                 <h1 className="text-xl font-bold text-foreground">
                   Claude <span className="text-primary">Config</span>
-                  {version && <span className="text-xs font-normal text-muted-foreground ml-2">v{version}</span>}
                 </h1>
               </div>
               {updateInfo && (
@@ -405,8 +404,8 @@ export default function Dashboard() {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 h-[calc(100vh-64px)] border-r border-border bg-card sticky top-16">
-          <ScrollArea className="h-full py-4">
+        <aside className="w-64 h-[calc(100vh-64px)] border-r border-border bg-card sticky top-16 flex flex-col">
+          <ScrollArea className="flex-1 py-4">
             {['Projects', 'Configuration', 'Tools', 'Developer', 'System', 'Help'].map((section) => (
               <div key={section} className="mb-6">
                 <h3 className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -449,6 +448,12 @@ export default function Dashboard() {
               </div>
             ))}
           </ScrollArea>
+          {/* Version footer */}
+          <div className="px-4 py-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">
+              {version ? `v${version}` : ''}
+            </span>
+          </div>
         </aside>
 
         {/* Main Content */}
