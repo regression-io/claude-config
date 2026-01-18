@@ -1,0 +1,239 @@
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { Server, Plus, Save, Trash2 } from 'lucide-react';
+
+export default function McpEditor({ content, parsed, onSave, registry }) {
+  const [localConfig, setLocalConfig] = useState(parsed || { include: [], mcpServers: {} });
+  const [viewMode, setViewMode] = useState('rich');
+  const [jsonText, setJsonText] = useState(JSON.stringify(parsed || {}, null, 2));
+  const [hasChanges, setHasChanges] = useState(false);
+  const [addDialog, setAddDialog] = useState({ open: false, json: '' });
+
+  useEffect(() => {
+    setLocalConfig(parsed || { include: [], mcpServers: {} });
+    setJsonText(JSON.stringify(parsed || {}, null, 2));
+    setHasChanges(false);
+  }, [parsed]);
+
+  const handleToggleInclude = (name) => {
+    const newInclude = localConfig.include?.includes(name)
+      ? localConfig.include.filter(n => n !== name)
+      : [...(localConfig.include || []), name];
+    setLocalConfig({ ...localConfig, include: newInclude });
+    setHasChanges(true);
+  };
+
+  const handleSave = () => {
+    if (viewMode === 'json') {
+      try {
+        const parsed = JSON.parse(jsonText);
+        onSave(JSON.stringify(parsed, null, 2));
+      } catch (e) {
+        toast.error('Invalid JSON');
+        return;
+      }
+    } else {
+      onSave(JSON.stringify(localConfig, null, 2));
+    }
+    setHasChanges(false);
+  };
+
+  const handleAddMcp = () => {
+    if (!addDialog.json.trim()) {
+      toast.error('Please paste the MCP JSON configuration');
+      return;
+    }
+
+    try {
+      let parsed;
+      try {
+        parsed = JSON.parse(addDialog.json);
+      } catch (e) {
+        toast.error('Invalid JSON format');
+        return;
+      }
+
+      let mcpsToAdd = {};
+      if (parsed.mcpServers && typeof parsed.mcpServers === 'object') {
+        mcpsToAdd = parsed.mcpServers;
+      } else if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const keys = Object.keys(parsed);
+        if (keys.includes('command')) {
+          toast.error('JSON is missing the MCP name. Expected: { "name": { "command": "...", "args": [...] } }');
+          return;
+        }
+        mcpsToAdd = parsed;
+      }
+
+      if (Object.keys(mcpsToAdd).length === 0) {
+        toast.error('No MCP configurations found in the JSON');
+        return;
+      }
+
+      for (const [name, mcp] of Object.entries(mcpsToAdd)) {
+        if (!mcp.command) {
+          toast.error(`MCP "${name}" is missing required "command" field`);
+          return;
+        }
+      }
+
+      const newMcpServers = { ...(localConfig.mcpServers || {}), ...mcpsToAdd };
+      const newConfig = { ...localConfig, mcpServers: newMcpServers };
+      setLocalConfig(newConfig);
+      setJsonText(JSON.stringify(newConfig, null, 2));
+      setHasChanges(true);
+
+      const count = Object.keys(mcpsToAdd).length;
+      toast.success(`Added ${count} MCP${count > 1 ? 's' : ''} - click Save to apply`);
+      setAddDialog({ open: false, json: '' });
+    } catch (error) {
+      toast.error('Failed to add: ' + error.message);
+    }
+  };
+
+  const registryMcps = registry?.mcpServers ? Object.keys(registry.mcpServers) : [];
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between p-3 border-b bg-gray-50 dark:bg-slate-800">
+        <Tabs value={viewMode} onValueChange={setViewMode}>
+          <TabsList className="h-8">
+            <TabsTrigger value="rich" className="text-xs px-3">Rich Editor</TabsTrigger>
+            <TabsTrigger value="json" className="text-xs px-3">JSON</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setAddDialog({ open: true, json: '' })}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add MCP
+          </Button>
+          {hasChanges && (
+            <Button size="sm" onClick={handleSave}>
+              <Save className="w-4 h-4 mr-1" />
+              Save
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        {viewMode === 'rich' ? (
+          <div className="p-4 space-y-4">
+            <div>
+              <h3 className="text-sm font-medium mb-2">Registry MCPs</h3>
+              <div className="space-y-2">
+                {registryMcps.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-slate-400">No MCPs in registry</p>
+                ) : (
+                  registryMcps.map((name) => (
+                    <div key={name} className="flex items-center justify-between p-2 rounded border bg-white dark:bg-slate-950">
+                      <div className="flex items-center gap-2">
+                        <Server className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm">{name}</span>
+                      </div>
+                      <Switch
+                        checked={localConfig.include?.includes(name)}
+                        onCheckedChange={() => handleToggleInclude(name)}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {Object.keys(localConfig.mcpServers || {}).length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Inline MCPs</h3>
+                <div className="space-y-2">
+                  {Object.entries(localConfig.mcpServers).map(([name, config]) => (
+                    <div key={name} className="p-2 rounded border bg-white dark:bg-slate-950 group">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{name}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">inline</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              const { [name]: _, ...rest } = localConfig.mcpServers;
+                              const newConfig = { ...localConfig, mcpServers: rest };
+                              setLocalConfig(newConfig);
+                              setJsonText(JSON.stringify(newConfig, null, 2));
+                              setHasChanges(true);
+                              toast.success(`Removed ${name} - click Save to apply`);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 font-mono">
+                        {config.command} {config.args?.join(' ')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Textarea
+            className="w-full h-full min-h-[400px] font-mono text-sm border-0 rounded-none resize-none"
+            value={jsonText}
+            onChange={(e) => {
+              setJsonText(e.target.value);
+              setHasChanges(true);
+            }}
+          />
+        )}
+      </ScrollArea>
+
+      <Dialog open={addDialog.open} onOpenChange={(open) => setAddDialog({ ...addDialog, open })}>
+        <DialogContent className="bg-white dark:bg-slate-950 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add MCP to Config</DialogTitle>
+            <DialogDescription>
+              Paste the MCP JSON configuration to add to this config file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={addDialog.json}
+              onChange={(e) => setAddDialog({ ...addDialog, json: e.target.value })}
+              placeholder={'{\n  "my-mcp": {\n    "command": "npx",\n    "args": ["-y", "@example/mcp-server"],\n    "env": {\n      "API_KEY": "${API_KEY}"\n    }\n  }\n}'}
+              className="font-mono text-sm bg-gray-50 dark:bg-slate-800"
+              rows={12}
+            />
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
+              Accepts formats: <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">{'{ "name": { "command": "...", "args": [...] } }'}</code> or <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">{'{ "mcpServers": { ... } }'}</code>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddDialog({ open: false, json: '' })}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddMcp} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="w-4 h-4 mr-2" />
+              Add MCP
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
