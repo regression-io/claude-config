@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield, Settings, Zap, Code, Server, Eye, EyeOff,
-  Save, RefreshCw, Check, ChevronDown, HelpCircle, Info,
-  Download, Upload, AlertTriangle, Terminal, Globe, FileText
+  Shield, Settings, Zap, Code, Eye,
+  RefreshCw, Check, AlertTriangle, Terminal
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,18 +81,17 @@ export default function ClaudeSettingsEditor({
 }) {
   const [settings, setSettings] = useState({});
   const [activeTab, setActiveTab] = useState('permissions');
-  const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState(null);
+  const debounceRef = useRef(null);
 
   // Sync with prop
   useEffect(() => {
     if (initialSettings) {
       setSettings(initialSettings);
       setJsonText(JSON.stringify(initialSettings, null, 2));
-      setHasChanges(false);
     }
   }, [initialSettings]);
 
@@ -104,66 +102,77 @@ export default function ClaudeSettingsEditor({
     }
   }, [settings, showJson]);
 
-  // Update a setting
-  const updateSetting = useCallback((key, value) => {
+  // Auto-save helper (immediate)
+  const autoSave = useCallback(async (newSettings) => {
+    if (!onSave) return;
+    setSaving(true);
+    try {
+      await onSave(newSettings);
+    } catch (error) {
+      toast.error('Failed to save: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  }, [onSave]);
+
+  // Debounced auto-save for text inputs
+  const debouncedAutoSave = useCallback((newSettings) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      autoSave(newSettings);
+    }, 800);
+  }, [autoSave]);
+
+  // Update a setting (immediate save for toggles/selects, debounced for text)
+  const updateSetting = useCallback((key, value, immediate = false) => {
     setSettings(prev => {
       const updated = { ...prev, [key]: value };
       // Remove key if value is empty/null/undefined
       if (value === '' || value === null || value === undefined) {
         delete updated[key];
       }
+      if (immediate) {
+        autoSave(updated);
+      } else {
+        debouncedAutoSave(updated);
+      }
       return updated;
     });
-    setHasChanges(true);
-  }, []);
+  }, [autoSave, debouncedAutoSave]);
 
-  // Update permissions
-  const handlePermissionsChange = useCallback((permissions) => {
-    setSettings(prev => ({ ...prev, permissions }));
-    setHasChanges(true);
-  }, []);
+  // Update permissions (from PermissionsEditor - already auto-saved there)
+  const handlePermissionsChange = useCallback(async (permissions) => {
+    const newSettings = { ...settings, permissions };
+    setSettings(newSettings);
+    await autoSave(newSettings);
+  }, [settings, autoSave]);
 
-  // Handle JSON editor changes
+  // Handle JSON editor changes (manual apply only)
   const handleJsonChange = (text) => {
     setJsonText(text);
     try {
-      const parsed = JSON.parse(text);
-      setSettings(parsed);
+      JSON.parse(text);
       setJsonError(null);
-      setHasChanges(true);
     } catch (e) {
       setJsonError(e.message);
     }
   };
 
-  // Save changes
-  const handleSave = async () => {
-    if (!onSave) return;
+  // Apply JSON changes
+  const handleApplyJson = async () => {
     if (jsonError) {
       toast.error('Fix JSON errors before saving');
       return;
     }
-
-    setSaving(true);
     try {
-      await onSave(settings);
-      setHasChanges(false);
-      toast.success('Settings saved');
-    } catch (error) {
-      toast.error('Failed to save: ' + error.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Reset changes
-  const handleReset = () => {
-    if (initialSettings) {
-      setSettings(initialSettings);
-      setJsonText(JSON.stringify(initialSettings, null, 2));
-      setJsonError(null);
-      setHasChanges(false);
-      toast.info('Changes reset');
+      const parsed = JSON.parse(jsonText);
+      setSettings(parsed);
+      await autoSave(parsed);
+      toast.success('Settings applied');
+    } catch (e) {
+      toast.error('Invalid JSON');
     }
   };
 
@@ -184,9 +193,10 @@ export default function ClaudeSettingsEditor({
         </div>
 
         <div className="flex items-center gap-2">
-          {hasChanges && (
-            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800">
-              Unsaved changes
+          {saving && (
+            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+              <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+              Saving...
             </Badge>
           )}
 
@@ -204,28 +214,6 @@ export default function ClaudeSettingsEditor({
               <TooltipContent>{showJson ? 'Show UI' : 'Show JSON'}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-
-          {hasChanges && (
-            <>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Reset
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving || !!jsonError}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                {saving ? (
-                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4 mr-1" />
-                )}
-                Save
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
@@ -246,11 +234,22 @@ export default function ClaudeSettingsEditor({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label>Raw JSON</Label>
-            {jsonError && (
-              <Badge variant="destructive" className="text-xs">
-                {jsonError}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {jsonError && (
+                <Badge variant="destructive" className="text-xs">
+                  {jsonError}
+                </Badge>
+              )}
+              <Button
+                size="sm"
+                onClick={handleApplyJson}
+                disabled={saving || !!jsonError}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                Apply JSON
+              </Button>
+            </div>
           </div>
           <Textarea
             value={jsonText}
@@ -307,7 +306,7 @@ export default function ClaudeSettingsEditor({
                   {MODEL_OPTIONS.map((model) => (
                     <button
                       key={model.id}
-                      onClick={() => updateSetting('model', model.id)}
+                      onClick={() => updateSetting('model', model.id, true)}
                       className={cn(
                         "w-full p-4 rounded-lg border text-left transition-all",
                         settings.model === model.id
@@ -376,7 +375,7 @@ export default function ClaudeSettingsEditor({
                 </div>
                 <Switch
                   checked={settings.autoAcceptEdits ?? false}
-                  onCheckedChange={(checked) => updateSetting('autoAcceptEdits', checked)}
+                  onCheckedChange={(checked) => updateSetting('autoAcceptEdits', checked, true)}
                 />
               </div>
 
@@ -389,7 +388,7 @@ export default function ClaudeSettingsEditor({
                 </div>
                 <Switch
                   checked={settings.verbose ?? false}
-                  onCheckedChange={(checked) => updateSetting('verbose', checked)}
+                  onCheckedChange={(checked) => updateSetting('verbose', checked, true)}
                 />
               </div>
 
@@ -402,7 +401,7 @@ export default function ClaudeSettingsEditor({
                 </div>
                 <Switch
                   checked={settings.enableMcp ?? true}
-                  onCheckedChange={(checked) => updateSetting('enableMcp', checked)}
+                  onCheckedChange={(checked) => updateSetting('enableMcp', checked, true)}
                 />
               </div>
 

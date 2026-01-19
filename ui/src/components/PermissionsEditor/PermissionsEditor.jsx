@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import {
   Shield, Plus, Download, Upload, AlertTriangle, RefreshCw,
-  Check, ChevronDown, HelpCircle, Info
+  ChevronDown, HelpCircle, Info
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,6 @@ export default function PermissionsEditor({
     deny: []
   });
   const [activeTab, setActiveTab] = useState('allow');
-  const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -56,9 +55,21 @@ export default function PermissionsEditor({
         ask: initialPermissions.ask || [],
         deny: initialPermissions.deny || []
       });
-      setHasChanges(false);
     }
   }, [initialPermissions]);
+
+  // Auto-save helper
+  const autoSave = useCallback(async (newPermissions) => {
+    if (!onSave || readOnly) return;
+    setSaving(true);
+    try {
+      await onSave(newPermissions);
+    } catch (error) {
+      toast.error('Failed to save: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  }, [onSave, readOnly]);
 
   // Add rule
   const handleAddRule = useCallback((category, rule) => {
@@ -70,14 +81,15 @@ export default function PermissionsEditor({
         return prev;
       }
 
-      return {
+      const newPermissions = {
         ...prev,
         [category]: [...prev[category], rule]
       };
+      autoSave(newPermissions);
+      toast.success(`Rule added to ${category}`);
+      return newPermissions;
     });
-    setHasChanges(true);
-    toast.success(`Rule added to ${category}`);
-  }, []);
+  }, [autoSave]);
 
   // Edit rule
   const handleEditRule = useCallback((category, oldRule, newCategory, newRule) => {
@@ -90,72 +102,50 @@ export default function PermissionsEditor({
       // Add to new category
       updated[newCategory] = [...updated[newCategory], newRule];
 
+      autoSave(updated);
+      toast.success('Rule updated');
       return updated;
     });
-    setHasChanges(true);
-    toast.success('Rule updated');
-  }, []);
+  }, [autoSave]);
 
   // Delete rule
   const handleDeleteRule = useCallback((category, rule) => {
-    setPermissions(prev => ({
-      ...prev,
-      [category]: prev[category].filter(r => r !== rule)
-    }));
-    setHasChanges(true);
-    toast.success('Rule deleted');
-  }, []);
+    setPermissions(prev => {
+      const newPermissions = {
+        ...prev,
+        [category]: prev[category].filter(r => r !== rule)
+      };
+      autoSave(newPermissions);
+      toast.success('Rule deleted');
+      return newPermissions;
+    });
+  }, [autoSave]);
 
   // Move rule between categories
   const handleMoveRule = useCallback((fromCategory, rule, toCategory) => {
-    setPermissions(prev => ({
-      ...prev,
-      [fromCategory]: prev[fromCategory].filter(r => r !== rule),
-      [toCategory]: [...prev[toCategory], rule]
-    }));
-    setHasChanges(true);
-    toast.success(`Moved to ${toCategory}`);
-  }, []);
+    setPermissions(prev => {
+      const newPermissions = {
+        ...prev,
+        [fromCategory]: prev[fromCategory].filter(r => r !== rule),
+        [toCategory]: [...prev[toCategory], rule]
+      };
+      autoSave(newPermissions);
+      toast.success(`Moved to ${toCategory}`);
+      return newPermissions;
+    });
+  }, [autoSave]);
 
   // Import permissions
   const handleImport = useCallback((newPermissions) => {
-    setPermissions({
+    const normalized = {
       allow: newPermissions.allow || [],
       ask: newPermissions.ask || [],
       deny: newPermissions.deny || []
-    });
-    setHasChanges(true);
+    };
+    setPermissions(normalized);
+    autoSave(normalized);
     toast.success('Permissions imported');
-  }, []);
-
-  // Save changes
-  const handleSave = async () => {
-    if (!onSave) return;
-
-    setSaving(true);
-    try {
-      await onSave(permissions);
-      setHasChanges(false);
-      toast.success('Permissions saved');
-    } catch (error) {
-      toast.error('Failed to save: ' + error.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Reset changes
-  const handleReset = () => {
-    if (initialPermissions) {
-      setPermissions({
-        allow: initialPermissions.allow || [],
-        ask: initialPermissions.ask || [],
-        deny: initialPermissions.deny || []
-      });
-      setHasChanges(false);
-      toast.info('Changes reset');
-    }
-  };
+  }, [autoSave]);
 
   // Open add dialog
   const openAddDialog = (category) => {
@@ -190,9 +180,10 @@ export default function PermissionsEditor({
         </div>
 
         <div className="flex items-center gap-2">
-          {hasChanges && (
-            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800">
-              Unsaved changes
+          {saving && (
+            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+              <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+              Saving...
             </Badge>
           )}
 
@@ -228,28 +219,6 @@ export default function PermissionsEditor({
             </TooltipTrigger>
             <TooltipContent>Import permissions</TooltipContent>
           </Tooltip>
-
-          {hasChanges && (
-            <>
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Reset
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                {saving ? (
-                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4 mr-1" />
-                )}
-                Save
-              </Button>
-            </>
-          )}
         </div>
       </div>
 

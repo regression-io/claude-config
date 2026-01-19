@@ -20,36 +20,45 @@ export default function McpEditor({ content, parsed, onSave, registry }) {
   const [localConfig, setLocalConfig] = useState(parsed || { include: [], mcpServers: {} });
   const [viewMode, setViewMode] = useState('rich');
   const [jsonText, setJsonText] = useState(JSON.stringify(parsed || {}, null, 2));
-  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [addDialog, setAddDialog] = useState({ open: false, json: '' });
 
   useEffect(() => {
     setLocalConfig(parsed || { include: [], mcpServers: {} });
     setJsonText(JSON.stringify(parsed || {}, null, 2));
-    setHasChanges(false);
   }, [parsed]);
+
+  // Auto-save helper
+  const autoSave = async (config) => {
+    setSaving(true);
+    try {
+      await onSave(JSON.stringify(config, null, 2));
+    } catch (e) {
+      toast.error('Failed to save: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleToggleInclude = (name) => {
     const newInclude = localConfig.include?.includes(name)
       ? localConfig.include.filter(n => n !== name)
       : [...(localConfig.include || []), name];
-    setLocalConfig({ ...localConfig, include: newInclude });
-    setHasChanges(true);
+    const newConfig = { ...localConfig, include: newInclude };
+    setLocalConfig(newConfig);
+    setJsonText(JSON.stringify(newConfig, null, 2));
+    autoSave(newConfig);
   };
 
-  const handleSave = () => {
-    if (viewMode === 'json') {
-      try {
-        const parsed = JSON.parse(jsonText);
-        onSave(JSON.stringify(parsed, null, 2));
-      } catch (e) {
-        toast.error('Invalid JSON');
-        return;
-      }
-    } else {
-      onSave(JSON.stringify(localConfig, null, 2));
+  // Manual save only needed for JSON editor mode
+  const handleSaveJson = () => {
+    try {
+      const parsed = JSON.parse(jsonText);
+      setLocalConfig(parsed);
+      autoSave(parsed);
+    } catch (e) {
+      toast.error('Invalid JSON');
     }
-    setHasChanges(false);
   };
 
   const handleAddMcp = () => {
@@ -95,10 +104,10 @@ export default function McpEditor({ content, parsed, onSave, registry }) {
       const newConfig = { ...localConfig, mcpServers: newMcpServers };
       setLocalConfig(newConfig);
       setJsonText(JSON.stringify(newConfig, null, 2));
-      setHasChanges(true);
+      autoSave(newConfig);
 
       const count = Object.keys(mcpsToAdd).length;
-      toast.success(`Added ${count} MCP${count > 1 ? 's' : ''} - click Save to apply`);
+      toast.success(`Added ${count} MCP${count > 1 ? 's' : ''}`);
       setAddDialog({ open: false, json: '' });
     } catch (error) {
       toast.error('Failed to add: ' + error.message);
@@ -116,15 +125,20 @@ export default function McpEditor({ content, parsed, onSave, registry }) {
             <TabsTrigger value="json" className="text-xs px-3">JSON</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {saving && (
+            <Badge variant="outline" className="text-xs text-blue-600">
+              Saving...
+            </Badge>
+          )}
           <Button size="sm" variant="outline" onClick={() => setAddDialog({ open: true, json: '' })}>
             <Plus className="w-4 h-4 mr-1" />
             Add MCP
           </Button>
-          {hasChanges && (
-            <Button size="sm" onClick={handleSave}>
+          {viewMode === 'json' && (
+            <Button size="sm" onClick={handleSaveJson} disabled={saving}>
               <Save className="w-4 h-4 mr-1" />
-              Save
+              Apply JSON
             </Button>
           )}
         </div>
@@ -174,8 +188,8 @@ export default function McpEditor({ content, parsed, onSave, registry }) {
                               const newConfig = { ...localConfig, mcpServers: rest };
                               setLocalConfig(newConfig);
                               setJsonText(JSON.stringify(newConfig, null, 2));
-                              setHasChanges(true);
-                              toast.success(`Removed ${name} - click Save to apply`);
+                              autoSave(newConfig);
+                              toast.success(`Removed ${name}`);
                             }}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -195,10 +209,7 @@ export default function McpEditor({ content, parsed, onSave, registry }) {
           <Textarea
             className="w-full h-full min-h-[400px] font-mono text-sm border-0 rounded-none resize-none"
             value={jsonText}
-            onChange={(e) => {
-              setJsonText(e.target.value);
-              setHasChanges(true);
-            }}
+            onChange={(e) => setJsonText(e.target.value)}
           />
         )}
       </ScrollArea>

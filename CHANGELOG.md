@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.4] - 2026-01-19
+
+### Changed
+
+- **Auto-save for Settings** - Removed manual Save/Reset buttons in favor of seamless auto-save
+  - PermissionsEditor: Rules auto-save immediately when added, edited, deleted, or moved
+  - ClaudeSettingsEditor: Toggles and model selection save immediately, text inputs use debounced save
+  - McpEditor: MCP toggles and removals save immediately (JSON mode still requires Apply button)
+  - MarkdownEditor: Content auto-saves with 800ms debounce while typing
+  - Improved UX with "Saving..." indicator instead of "Unsaved changes" badge
+  - No more "click Save to apply" toasts - changes apply instantly
+
+---
+
 ## [0.34.3] - 2026-01-18
 
 ### Added
