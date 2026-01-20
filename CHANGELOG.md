@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.9] - 2026-01-20
+
+### Changed
+
+- **Compact Permissions Editor UI** - Redesigned for better scalability with many rules
+  - Rules displayed as compact chips/badges instead of large rows
+  - Collapsible groups by type (Bash, Read, Edit, Write, etc.)
+  - Chips show edit/delete on hover, full pattern in tooltip
+  - Color-coded by category (green=allow, amber=ask, red=deny)
+
+### Added
+
+- **Multi-Select for Adding Rules** - Add multiple permission presets at once
+  - Checkboxes to select multiple presets in the Add Rules dialog
+  - "Select All" / "Clear" buttons for quick selection
+  - Shows count of selected presets
+  - Already-added rules shown as disabled with "Added" badge
+  - Submit button shows "Add X Rules" when multiple selected
+
+---
+
 ## [0.34.7] - 2026-01-20
 
 ### Added
