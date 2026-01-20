@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, Package, RefreshCw, Rocket, Terminal,
-  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen, Puzzle, Workflow
+  Folder, FolderOpen, Loader2, Brain, Wand2, Wrench, Shield, Download, Layers, BookOpen, Puzzle, Workflow, GraduationCap
 } from 'lucide-react';
 import FileExplorer from "@/components/FileExplorer";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import WorkstreamSwitcher from "@/components/WorkstreamSwitcher";
 import SmartSyncToast from "@/components/SmartSyncToast";
+import WelcomeModal from "@/components/WelcomeModal";
 import AddProjectDialog from "@/components/AddProjectDialog";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -26,21 +27,29 @@ import {
   ProjectsView,
   DocsView,
   PluginsView,
-  WorkstreamsView
+  WorkstreamsView,
+  TutorialView
 } from "@/views";
 
 const navItems = [
+  // Projects section
   { id: 'projects', label: 'All Projects', icon: Layers, section: 'Projects' },
-  { id: 'workstreams', label: 'Workstreams', icon: Workflow, section: 'Projects', isNew: true },
   { id: 'explorer', label: 'Project Explorer', icon: FolderOpen, section: 'Projects' },
-  { id: 'registry', label: 'MCP Registry', icon: Package, section: 'Configuration' },
-  { id: 'plugins', label: 'Plugins', icon: Puzzle, section: 'Configuration', isNew: true },
-  { id: 'memory', label: 'Memory', icon: Brain, section: 'Configuration' },
+  // Tools section (above Configuration)
+  { id: 'registry', label: 'MCP Registry', icon: Package, section: 'Tools' },
+  { id: 'plugins', label: 'Plugins', icon: Puzzle, section: 'Tools' },
+  { id: 'memory', label: 'Memory', icon: Brain, section: 'Tools' },
+  { id: 'workstreams', label: 'Workstreams', icon: Workflow, section: 'Tools' },
+  // Configuration section (tool-specific settings)
   { id: 'claude-settings', label: 'Claude Code', icon: Shield, section: 'Configuration' },
   { id: 'gemini-settings', label: 'Gemini CLI', icon: Terminal, section: 'Configuration' },
+  // Developer section
   { id: 'create-mcp', label: 'Create MCP', icon: Wand2, section: 'Developer' },
+  // System section
   { id: 'preferences', label: 'Preferences', icon: Wrench, section: 'System' },
-  { id: 'docs', label: 'Docs & Help', icon: BookOpen, section: 'Help', isNew: true },
+  // Help section
+  { id: 'docs', label: 'Docs & Help', icon: BookOpen, section: 'Help' },
+  { id: 'tutorial', label: 'Tutorial', icon: GraduationCap, section: 'Help', isNew: true },
 ];
 
 // Helper to get/set localStorage with JSON
@@ -328,6 +337,8 @@ export default function Dashboard() {
         }} />;
       case 'docs':
         return <DocsView />;
+      case 'tutorial':
+        return <TutorialView />;
       default:
         return null;
     }
@@ -399,7 +410,7 @@ export default function Dashboard() {
         {/* Sidebar */}
         <aside className="w-64 h-[calc(100vh-64px)] border-r border-border bg-card sticky top-16 flex flex-col">
           <ScrollArea className="flex-1 py-4">
-            {['Projects', 'Configuration', 'Tools', 'Developer', 'System', 'Help'].map((section) => (
+            {['Projects', 'Tools', 'Configuration', 'Developer', 'System', 'Help'].map((section) => (
               <div key={section} className="mb-6">
                 <h3 className="px-4 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {section}
@@ -452,7 +463,7 @@ export default function Dashboard() {
         {/* Main Content */}
         <main className={cn(
           "flex-1 overflow-auto",
-          (currentView === 'explorer' || currentView === 'docs') ? "h-[calc(100vh-64px)]" : "p-6"
+          ['explorer', 'docs', 'tutorial'].includes(currentView) ? "h-[calc(100vh-64px)]" : "p-6"
         )}>
           <AnimatePresence mode="wait">
             <motion.div
@@ -461,7 +472,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className={(currentView === 'explorer' || currentView === 'docs') ? "h-full" : ""}
+              className={['explorer', 'docs', 'tutorial'].includes(currentView) ? "h-full" : ""}
             >
               {renderContent()}
             </motion.div>
@@ -485,6 +496,9 @@ export default function Dashboard() {
           // Refresh workstream state if needed
         }}
       />
+
+      {/* First-time Welcome Modal */}
+      <WelcomeModal onStartTutorial={() => setCurrentView('tutorial')} />
     </div>
   );
 }

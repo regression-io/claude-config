@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-01-20
+
+### Added
+
+- **Interactive Tutorial** - New step-by-step guide under Help menu
+  - 10 sections covering all features from basics to advanced
+  - Conversational, easy-to-follow approach
+  - Navigation with Previous/Next buttons
+  - Covers: Projects, Rules, MCPs, Permissions, Memory, Plugins, Workstreams, Multi-tool
+
+- **First-Time Welcome Modal** - Greeting for new users
+  - Explains why we built Claude Config
+  - Quick overview of features
+  - Option to start tutorial or skip
+  - Only shows once (remembers preference)
+
+### Changed
+
+- **Reorganized Sidebar Navigation** - Better logical grouping
+  - New "Tools" section (above Configuration) with: MCP Registry, Plugins, Memory, Workstreams
+  - "Configuration" section now focused on tool settings: Claude Code, Gemini CLI
+  - Clearer separation between tools/features and per-tool configuration
+
+### Fixed
+
+- **Permission Chip Cursor** - Uses default cursor instead of jarring I-beam
+
+---
+
 ## [0.34.16] - 2026-01-20
 
 ### Fixed
