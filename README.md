@@ -102,8 +102,9 @@ claude-config workstream detect [path]     # Detect workstream for directory
 ### Registry Commands
 
 ```bash
-claude-config registry-add <name> '<json>'   # Add MCP to global registry
-claude-config registry-remove <name>         # Remove MCP from registry
+claude-config registry                       # List MCPs in global registry
+claude-config registry add <name> '<json>'   # Add MCP to global registry
+claude-config registry remove <name>         # Remove MCP from registry
 ```
 
 ### Web UI

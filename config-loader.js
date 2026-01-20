@@ -25,7 +25,7 @@ const { findProjectRoot, findAllConfigs, mergeConfigs, getConfigPath, collectFil
 const { listTemplates, findTemplate, resolveTemplateChain, copyTemplateFiles, trackAppliedTemplate, getAppliedTemplate } = require('./lib/templates');
 const { apply, applyForAntigravity, applyForGemini, detectInstalledTools, applyForTools } = require('./lib/apply');
 const { list, add, remove } = require('./lib/mcps');
-const { registryAdd, registryRemove } = require('./lib/registry');
+const { registryList, registryAdd, registryRemove } = require('./lib/registry');
 const { init, applyTemplate, show } = require('./lib/init');
 const { memoryList, memoryInit, memoryAdd, memorySearch } = require('./lib/memory');
 const { envList, envSet, envUnset } = require('./lib/env');
@@ -103,6 +103,7 @@ class ClaudeConfigManager {
   remove(mcpNames) { return remove(this.installDir, mcpNames); }
 
   // Registry
+  registryList() { return registryList(this.registryPath); }
   registryAdd(name, configJson) { return registryAdd(this.registryPath, name, configJson); }
   registryRemove(name) { return registryRemove(this.registryPath, name); }
 

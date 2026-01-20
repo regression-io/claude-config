@@ -931,8 +931,9 @@ export default function RegistryView({ registry, searchQuery, setSearchQuery, on
           <p>claude-config list                       # List available MCPs (✓ = active)</p>
           <p>claude-config add &lt;mcp&gt; [mcp...]         # Add MCP(s) to project</p>
           <p>claude-config remove &lt;mcp&gt; [mcp...]      # Remove MCP(s) from project</p>
-          <p>claude-config registry-add &lt;name&gt; '...'  # Add MCP to global registry</p>
-          <p>claude-config registry-remove &lt;name&gt;     # Remove MCP from registry</p>
+          <p>claude-config registry                    # List MCPs in registry</p>
+          <p>claude-config registry add &lt;name&gt; '...'  # Add MCP to registry</p>
+          <p>claude-config registry remove &lt;name&gt;     # Remove from registry</p>
         </div>
       </div>
     </div>
