@@ -3,7 +3,7 @@ import {
   Layers, Plus, Trash2, RefreshCw, Check, Edit2, Save, X,
   FolderPlus, FolderMinus, ChevronDown, ChevronRight, Play,
   Loader2, FileText, AlertCircle, CheckCircle2, Download,
-  Activity, Sparkles, Clock, BarChart3, Zap
+  Activity, Sparkles, Clock, BarChart3, Zap, HelpCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import api from "@/lib/api";
 
 export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
@@ -575,47 +581,74 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
       </div>
 
       {/* Hook Status */}
-      {hookStatus.isInstalled ? (
-        <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm text-green-700 dark:text-green-400">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Hook Installed</p>
-              <p className="text-green-600 dark:text-green-500">
-                Workstream rules will be automatically injected into every Claude session.
-              </p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-slate-300">Hook Integration</h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-sm">
+                  <strong>What are hooks?</strong><br /><br />
+                  Hooks are scripts that run automatically at specific points in Claude Code sessions.
+                  The workstream hook runs before each prompt and injects your active workstream's rules into the context.<br /><br />
+                  <strong>How it works:</strong><br />
+                  1. You activate a workstream<br />
+                  2. Hook detects the active workstream<br />
+                  3. Rules are prepended to Claude's context<br />
+                  4. Claude understands your project context
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {hookStatus.isInstalled ? (
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm text-green-700 dark:text-green-400">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Hook Installed</p>
+                <p className="text-green-600 dark:text-green-500">
+                  Workstream rules will be automatically injected into every Claude session.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm text-amber-700 dark:text-amber-400">
-          <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium mb-1">Hook Integration Required</p>
-              <p className="mb-3">
-                Install the pre-prompt hook to automatically inject workstream rules into every Claude session.
-              </p>
-              <Button
-                onClick={handleInstallHook}
-                disabled={installingHook || hookStatus.loading}
-                size="sm"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
-              >
-                {installingHook ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                Install Hook Automatically
-              </Button>
-              <p className="text-xs mt-2 text-amber-600 dark:text-amber-500">
-                This will create/update <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">~/.claude/hooks/pre-prompt.sh</code>
-              </p>
+        ) : (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm text-amber-700 dark:text-amber-400">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium mb-1">Hook Not Installed</p>
+                <p className="mb-3">
+                  Install the pre-prompt hook to automatically inject workstream rules into every Claude session.
+                </p>
+                <Button
+                  onClick={handleInstallHook}
+                  disabled={installingHook || hookStatus.loading}
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {installingHook ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Install Hook
+                </Button>
+                <p className="text-xs mt-2 text-amber-600 dark:text-amber-500">
+                  Creates <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">~/.claude/hooks/pre-prompt.sh</code>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Activity Insights */}
       {activitySummary && activitySummary.totalSessions > 0 && (
