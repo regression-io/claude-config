@@ -39,19 +39,27 @@ Note: Removing a project from the registry does not delete the project files.
     content: `
 ## Switching Projects
 
-### Via UI
+### In Claude Code
 
-Use the project dropdown in the header to quickly switch between registered projects. The UI will reload to show the new project's configuration.
-
-### Via CLI
+To work on a project with Claude Code, simply run \`claude\` from the project directory:
 
 \`\`\`bash
-claude-config ui --dir /path/to/project
+cd ~/projects/my-app
+claude
 \`\`\`
 
-### Active Project
+Claude Code automatically uses the configuration from the current directory's \`.claude/\` folder.
 
-The active project is remembered between sessions. When you start the UI, it automatically loads the last active project.
+### In the Config UI
+
+The project dropdown in the header switches which project's **configuration** you're editing. This doesn't affect Claude Code sessions - it just changes what the UI displays.
+
+\`\`\`bash
+# Start UI for a specific project
+claude-config ui /path/to/project
+\`\`\`
+
+The UI remembers your last active project between sessions.
     `
   },
   'project-structure': {
