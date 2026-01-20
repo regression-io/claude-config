@@ -32,49 +32,47 @@ export default function PermissionRuleChip({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Tooltip delayDuration={300}>
+      <Tooltip>
         <TooltipTrigger asChild>
-          <Badge
-            variant="secondary"
-            className={cn(
-              "cursor-help transition-all text-xs font-mono py-1 px-2 h-7",
-              category === 'allow' && "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300",
-              category === 'ask' && "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300",
-              category === 'deny' && "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300",
-              !readOnly && "rounded-r-none"
-            )}
-          >
-            {displayRule}
-          </Badge>
+          <span className="inline-block">
+            <Badge
+              variant="secondary"
+              className={cn(
+                "cursor-help transition-all text-xs font-mono py-1 px-2 h-7",
+                category === 'allow' && "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300",
+                category === 'ask' && "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300",
+                category === 'deny' && "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300",
+                !readOnly && "rounded-r-none"
+              )}
+            >
+              {displayRule}
+            </Badge>
+          </span>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-md p-3">
           <div className="space-y-2">
-            {/* What this rule does */}
             <div>
-              <p className="text-sm font-medium text-white">{explanation.summary}</p>
-              <p className="text-xs text-gray-300 mt-1">{explanation.detail}</p>
+              <p className="text-sm font-medium">{explanation.summary}</p>
+              <p className="text-xs text-muted-foreground mt-1">{explanation.detail}</p>
             </div>
 
-            {/* Category meaning */}
             <div className={cn(
               "text-xs px-2 py-1 rounded",
-              category === 'allow' && "bg-green-900/50 text-green-300",
-              category === 'ask' && "bg-amber-900/50 text-amber-300",
-              category === 'deny' && "bg-red-900/50 text-red-300"
+              category === 'allow' && "bg-green-500/20 text-green-700 dark:text-green-300",
+              category === 'ask' && "bg-amber-500/20 text-amber-700 dark:text-amber-300",
+              category === 'deny' && "bg-red-500/20 text-red-700 dark:text-red-300"
             )}>
               {explanation.categoryMeaning}
             </div>
 
-            {/* Examples if any */}
             {explanation.examples && explanation.examples.length > 0 && (
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 <span className="font-medium">Examples: </span>
                 {explanation.examples.join(', ')}
               </div>
             )}
 
-            {/* Technical pattern */}
-            <code className="text-[10px] text-gray-500 block break-all">
+            <code className="text-[10px] text-muted-foreground/70 block break-all">
               Pattern: {rule}
             </code>
           </div>

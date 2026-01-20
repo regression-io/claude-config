@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.16] - 2026-01-20
+
+### Fixed
+
+- **Tooltip Display Fix** - Fixed permission rule tooltips not appearing on hover
+  - Wrapped trigger in span for proper event forwarding
+  - Updated tooltip colors to use semantic theme tokens
+
+---
+
 ## [0.34.12] - 2026-01-20
 
 ### Added
