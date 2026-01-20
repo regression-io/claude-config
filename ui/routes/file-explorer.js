@@ -39,7 +39,7 @@ function scanFolderForExplorer(dir, manager, label = null) {
     files: [],
     agentFiles: [],
     geminiFiles: [],
-    appliedTemplate: manager.getAppliedTemplate(dir)
+    appliedTemplate: null
   };
 
   // If none of the config folders exist, don't include

@@ -196,20 +196,6 @@ describe('ClaudeConfigManager', () => {
       assert.deepStrictEqual(result.include, ['github']);
     });
   });
-
-  describe('findTemplate', () => {
-    it('should return null for non-existent template', () => {
-      const result = manager.findTemplate('nonexistent-template');
-      assert.strictEqual(result, null);
-    });
-
-    it('should find template with direct path', () => {
-      const result = manager.findTemplate('frameworks/express');
-      if (result) {
-        assert.ok(result.includes('express'));
-      }
-    });
-  });
 });
 
 describe('Integration', () => {

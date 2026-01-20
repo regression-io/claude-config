@@ -233,7 +233,7 @@ class ConfigUIServer {
             appliedTemplate: null
           };
         }
-        subFolder.appliedTemplate = this.manager.getAppliedTemplate(sub.dir);
+        subFolder.appliedTemplate = null;
         subFolder.isSubproject = true;
         subFolder.hasConfig = sub.hasConfig;
         subFolder.mcpCount = sub.mcpCount || 0;
