@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Terminal, FileText, FileEdit, Pencil, Globe, Search, Plug,
-  AlertCircle, Wand2, HelpCircle
+  AlertCircle, Wand2, HelpCircle, Check
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter
@@ -30,14 +32,15 @@ export default function PermissionRuleForm({
   onSubmit,
   defaultCategory = 'allow',
   defaultRule = '',
-  isEditing = false
+  isEditing = false,
+  existingRules = [] // To filter out already-added rules
 }) {
   const [mode, setMode] = useState('preset');
   const [category, setCategory] = useState(defaultCategory);
   const [ruleType, setRuleType] = useState('Bash');
   const [ruleValue, setRuleValue] = useState('');
   const [freeformRule, setFreeformRule] = useState(defaultRule);
-  const [selectedPreset, setSelectedPreset] = useState(null);
+  const [selectedPresets, setSelectedPresets] = useState(new Set());
   const [presetSearch, setPresetSearch] = useState('');
   const [validationError, setValidationError] = useState(null);
 
@@ -45,45 +48,69 @@ export default function PermissionRuleForm({
   useEffect(() => {
     if (open) {
       setCategory(defaultCategory);
+      setSelectedPresets(new Set());
+      setPresetSearch('');
       if (defaultRule && isEditing) {
         const parsed = parsePermissionRule(defaultRule);
         setRuleType(parsed.type === 'unknown' ? 'Bash' : parsed.type);
         setRuleValue(parsed.value);
         setFreeformRule(defaultRule);
-
-        const matchingPreset = PRESET_PATTERNS.find(p => p.pattern === defaultRule);
-        if (matchingPreset) {
-          setSelectedPreset(matchingPreset);
-          setMode('preset');
-        } else {
-          setMode('builder');
-        }
+        setMode('builder');
       } else {
         setRuleType('Bash');
         setRuleValue('');
         setFreeformRule('');
-        setSelectedPreset(null);
         setMode('preset');
       }
     }
   }, [open, defaultRule, defaultCategory, isEditing]);
 
-  // Build rule from components
+  // Toggle preset selection
+  const togglePreset = (pattern) => {
+    setSelectedPresets(prev => {
+      const next = new Set(prev);
+      if (next.has(pattern)) {
+        next.delete(pattern);
+      } else {
+        next.add(pattern);
+      }
+      return next;
+    });
+  };
+
+  // Select all visible presets
+  const selectAllPresets = () => {
+    const patterns = filteredPresets
+      .filter(p => !existingRules.includes(p.pattern))
+      .map(p => p.pattern);
+    setSelectedPresets(new Set(patterns));
+  };
+
+  // Clear all selections
+  const clearPresets = () => {
+    setSelectedPresets(new Set());
+  };
+
+  // Build rule from components (for builder/freeform modes)
   const builtRule = useMemo(() => {
-    if (mode === 'preset' && selectedPreset) {
-      return selectedPreset.pattern;
-    }
     if (mode === 'freeform') {
       return freeformRule;
     }
-    return buildRule(ruleType, ruleValue);
-  }, [mode, selectedPreset, ruleType, ruleValue, freeformRule]);
+    if (mode === 'builder') {
+      return buildRule(ruleType, ruleValue);
+    }
+    return '';
+  }, [mode, ruleType, ruleValue, freeformRule]);
 
-  // Validate on change
+  // Validate on change (only for non-preset modes)
   useEffect(() => {
-    const error = validateRule(builtRule);
-    setValidationError(error);
-  }, [builtRule]);
+    if (mode !== 'preset') {
+      const error = validateRule(builtRule);
+      setValidationError(error);
+    } else {
+      setValidationError(null);
+    }
+  }, [builtRule, mode]);
 
   // Filter presets by search
   const filteredPresets = useMemo(() => {
@@ -110,12 +137,27 @@ export default function PermissionRuleForm({
   }, [filteredPresets]);
 
   const handleSubmit = () => {
-    if (validationError) {
-      return;
+    if (mode === 'preset') {
+      // Submit all selected presets
+      const rules = Array.from(selectedPresets);
+      if (rules.length === 0) return;
+
+      for (const rule of rules) {
+        onSubmit(category, rule);
+      }
+      onOpenChange(false);
+    } else {
+      // Submit single rule from builder/freeform
+      if (validationError || !builtRule) return;
+      onSubmit(category, builtRule);
+      onOpenChange(false);
     }
-    onSubmit(category, builtRule);
-    onOpenChange(false);
   };
+
+  // Determine if submit is disabled
+  const isSubmitDisabled = mode === 'preset'
+    ? selectedPresets.size === 0
+    : !builtRule || !!validationError;
 
   const quickExamples = getQuickExamples(ruleType);
 
@@ -191,42 +233,79 @@ export default function PermissionRuleForm({
 
             {/* Preset Selection */}
             <TabsContent value="preset" className="space-y-4">
-              <Input
-                placeholder="Search presets..."
-                value={presetSearch}
-                onChange={(e) => setPresetSearch(e.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search presets..."
+                  value={presetSearch}
+                  onChange={(e) => setPresetSearch(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllPresets}
+                  disabled={filteredPresets.length === 0}
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearPresets}
+                  disabled={selectedPresets.size === 0}
+                >
+                  Clear
+                </Button>
+              </div>
 
-              <div className="border border-gray-200 dark:border-slate-700 rounded-lg max-h-[250px] overflow-auto">
+              {selectedPresets.size > 0 && (
+                <div className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400">
+                  <Check className="w-4 h-4" />
+                  {selectedPresets.size} preset{selectedPresets.size !== 1 ? 's' : ''} selected
+                </div>
+              )}
+
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg max-h-[220px] overflow-auto">
                 {Object.entries(groupedPresets).map(([cat, presets]) => (
                   <div key={cat} className="border-b border-gray-200 dark:border-slate-700 last:border-b-0">
-                    <div className="px-3 py-2 bg-gray-50 dark:bg-slate-800 font-medium text-sm text-gray-600 dark:text-slate-300">
+                    <div className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800 font-medium text-xs text-gray-600 dark:text-slate-300 sticky top-0">
                       {cat}
                     </div>
                     {presets.map(preset => {
                       const PresetIcon = preset.icon;
+                      const isSelected = selectedPresets.has(preset.pattern);
+                      const isExisting = existingRules.includes(preset.pattern);
                       return (
-                        <button
+                        <label
                           key={preset.pattern}
-                          onClick={() => setSelectedPreset(preset)}
                           className={cn(
-                            "w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors",
-                            selectedPreset?.pattern === preset.pattern && "bg-indigo-50 dark:bg-indigo-950/50 border-l-2 border-indigo-500"
+                            "flex items-start gap-2 px-3 py-2 cursor-pointer transition-colors",
+                            isExisting
+                              ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-slate-800"
+                              : isSelected
+                                ? "bg-indigo-50 dark:bg-indigo-950/50"
+                                : "hover:bg-gray-50 dark:hover:bg-slate-800"
                           )}
                         >
-                          <div className="flex items-start gap-3">
-                            <PresetIcon className="w-4 h-4 mt-0.5 text-gray-400 dark:text-slate-500" />
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm">{preset.name}</div>
-                              <code className="text-xs text-gray-500 dark:text-slate-400 block truncate">
-                                {preset.pattern}
-                              </code>
-                              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-                                {preset.description}
-                              </p>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => !isExisting && togglePreset(preset.pattern)}
+                            disabled={isExisting}
+                            className="mt-0.5"
+                          />
+                          <PresetIcon className="w-4 h-4 mt-0.5 text-gray-400 dark:text-slate-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{preset.name}</span>
+                              {isExisting && (
+                                <Badge variant="secondary" className="text-xs">Added</Badge>
+                              )}
                             </div>
+                            <code className="text-xs text-gray-500 dark:text-slate-400 block truncate">
+                              {preset.pattern}
+                            </code>
                           </div>
-                        </button>
+                        </label>
                       );
                     })}
                   </div>
@@ -327,24 +406,26 @@ export default function PermissionRuleForm({
             </TabsContent>
           </Tabs>
 
-          {/* Preview */}
-          <div className="space-y-2">
-            <Label>Generated Rule</Label>
-            <div className={cn(
-              "p-3 rounded-lg border font-mono text-sm",
-              validationError
-                ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
-                : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300"
-            )}>
-              {builtRule || <span className="text-gray-400 dark:text-slate-500">No rule configured</span>}
-            </div>
-            {validationError && (
-              <div className="flex items-center gap-2 text-sm text-red-600">
-                <AlertCircle className="w-4 h-4" />
-                {validationError}
+          {/* Preview - only show for builder/freeform modes */}
+          {mode !== 'preset' && (
+            <div className="space-y-2">
+              <Label>Generated Rule</Label>
+              <div className={cn(
+                "p-3 rounded-lg border font-mono text-sm",
+                validationError
+                  ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+                  : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300"
+              )}>
+                {builtRule || <span className="text-gray-400 dark:text-slate-500">No rule configured</span>}
               </div>
-            )}
-          </div>
+              {validationError && (
+                <div className="flex items-center gap-2 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4" />
+                  {validationError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -353,10 +434,14 @@ export default function PermissionRuleForm({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!builtRule || !!validationError}
+            disabled={isSubmitDisabled}
             className="bg-indigo-600 hover:bg-indigo-700 text-white"
           >
-            {isEditing ? 'Update Rule' : 'Add Rule'}
+            {isEditing
+              ? 'Update Rule'
+              : mode === 'preset' && selectedPresets.size > 1
+                ? `Add ${selectedPresets.size} Rules`
+                : 'Add Rule'}
           </Button>
         </DialogFooter>
       </DialogContent>

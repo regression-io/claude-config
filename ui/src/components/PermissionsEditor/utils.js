@@ -205,3 +205,36 @@ export function getCategoryConfig(category) {
   };
   return configs[category];
 }
+
+/**
+ * Group rules by their type
+ */
+export function groupRulesByType(rules) {
+  const groups = {
+    Bash: [],
+    Read: [],
+    Edit: [],
+    Write: [],
+    WebFetch: [],
+    WebSearch: [],
+    mcp: [],
+    other: []
+  };
+
+  for (const rule of rules) {
+    const parsed = parsePermissionRule(rule);
+    const type = parsed.type;
+
+    if (groups[type]) {
+      groups[type].push(rule);
+    } else {
+      groups.other.push(rule);
+    }
+  }
+
+  // Return only non-empty groups in a consistent order
+  const order = ['Bash', 'Read', 'Edit', 'Write', 'WebFetch', 'WebSearch', 'mcp', 'other'];
+  return order
+    .filter(type => groups[type].length > 0)
+    .map(type => ({ type, rules: groups[type] }));
+}

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Shield, Plus, Download, Upload, AlertTriangle, RefreshCw,
   ChevronDown, HelpCircle, Info
@@ -21,10 +20,10 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-import PermissionRuleItem from './PermissionRuleItem';
+import PermissionRuleGroup from './PermissionRuleGroup';
 import PermissionRuleForm from './PermissionRuleForm';
 import ImportExportDialog from './ImportExportDialog';
-import { getCategoryConfig, getCategoryTooltip } from './utils';
+import { getCategoryConfig, getCategoryTooltip, groupRulesByType } from './utils';
 
 export default function PermissionsEditor({
   permissions: initialPermissions,
@@ -323,9 +322,10 @@ export default function PermissionsEditor({
           {['allow', 'ask', 'deny'].map(category => {
             const config = getCategoryConfig(category);
             const rules = permissions[category] || [];
+            const groupedRules = groupRulesByType(rules);
 
             return (
-              <TabsContent key={category} value={category} className="space-y-4">
+              <TabsContent key={category} value={category} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -345,7 +345,7 @@ export default function PermissionsEditor({
                     disabled={readOnly}
                   >
                     <Plus className="w-4 h-4 mr-1" />
-                    Add Rule
+                    Add Rules
                   </Button>
                 </div>
 
@@ -361,24 +361,23 @@ export default function PermissionsEditor({
                       onClick={() => openAddDialog(category)}
                       disabled={readOnly}
                     >
-                      Add a rule
+                      Add rules
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <AnimatePresence mode="popLayout">
-                      {rules.map(rule => (
-                        <PermissionRuleItem
-                          key={rule}
-                          rule={rule}
-                          category={category}
-                          onEdit={() => openEditDialog(category, rule)}
-                          onDelete={() => handleDeleteRule(category, rule)}
-                          onMove={(toCategory) => handleMoveRule(category, rule, toCategory)}
-                          readOnly={readOnly}
-                        />
-                      ))}
-                    </AnimatePresence>
+                    {groupedRules.map(({ type, rules: typeRules }) => (
+                      <PermissionRuleGroup
+                        key={type}
+                        type={type}
+                        rules={typeRules}
+                        category={category}
+                        onEdit={(rule) => openEditDialog(category, rule)}
+                        onDelete={(rule) => handleDeleteRule(category, rule)}
+                        onAddRule={() => openAddDialog(category)}
+                        readOnly={readOnly}
+                      />
+                    ))}
                   </div>
                 )}
               </TabsContent>
@@ -401,6 +400,7 @@ export default function PermissionsEditor({
         defaultCategory={editingRule?.category || activeTab}
         defaultRule={editingRule?.rule || ''}
         isEditing={!!editingRule}
+        existingRules={[...permissions.allow, ...permissions.ask, ...permissions.deny]}
       />
 
       {/* Import/Export Dialog */}
