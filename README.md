@@ -24,6 +24,15 @@ The Web UI automatically detects when updates are available and shows a notifica
 ## Quick Start
 
 ```bash
+# Launch the Web UI (recommended)
+claude-config ui
+```
+
+The Web UI provides a visual interface for managing all your Claude Code configuration.
+
+### CLI Alternative
+
+```bash
 # Initialize a project
 claude-config init
 
@@ -32,13 +41,6 @@ claude-config add postgres github
 
 # Generate .mcp.json for Claude Code
 claude-config apply
-
-# Install plugins for framework guidance
-claude plugin marketplace add regression-io/claude-config-plugins
-claude plugin install fastapi-support@claude-config-plugins
-
-# Or open the Web UI
-claude-config ui
 ```
 
 ## CLI Commands

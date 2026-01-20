@@ -303,6 +303,14 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
   const handleAddProject = async (projectPath) => {
     if (!selectedWorkstreamForProject) return;
 
+    // Check if project is in another workstream
+    const existingWs = getProjectWorkstream(projectPath, selectedWorkstreamForProject.id);
+    if (existingWs) {
+      if (!confirm(`This project is already in "${existingWs.name}".\n\nA project should typically belong to one workstream (one product).\n\nAdd anyway?`)) {
+        return;
+      }
+    }
+
     try {
       const result = await api.addProjectToWorkstream(selectedWorkstreamForProject.id, projectPath);
       if (result.success) {
@@ -338,6 +346,13 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
 
   const getBasename = (p) => {
     return p.split('/').pop() || p;
+  };
+
+  // Check if a project is already in another workstream
+  const getProjectWorkstream = (projectPath, excludeWorkstreamId = null) => {
+    return workstreams.find(ws =>
+      ws.id !== excludeWorkstreamId && ws.projects?.includes(projectPath)
+    );
   };
 
   if (loading) {
@@ -916,19 +931,29 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                 <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2 max-h-40 overflow-y-auto bg-white dark:bg-slate-900">
                   {projects
                     .filter(p => !newProjects.includes(p.path))
-                    .map(p => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleAddNewProject(p.path)}
-                        className="w-full text-left p-2 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
-                      >
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{p.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate">
-                          {p.path.replace(/^\/Users\/[^/]+/, '~')}
-                        </div>
-                      </button>
-                    ))}
+                    .map(p => {
+                      const existingWs = getProjectWorkstream(p.path);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleAddNewProject(p.path)}
+                          className="w-full text-left p-2 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
+                            {existingWs && (
+                              <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                                in {existingWs.name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate">
+                            {p.path.replace(/^\/Users\/[^/]+/, '~')}
+                          </div>
+                        </button>
+                      );
+                    })}
                   {projects.filter(p => !newProjects.includes(p.path)).length === 0 && (
                     <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-2">
                       All registered projects added
@@ -1049,23 +1074,33 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                   <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-2 max-h-40 overflow-y-auto bg-white dark:bg-slate-900">
                     {projects
                       .filter(p => !editingWorkstream.projects?.includes(p.path))
-                      .map(p => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setEditingWorkstream(prev => ({
-                            ...prev,
-                            projects: [...(prev.projects || []), p.path],
-                            showPicker: false
-                          }))}
-                          className="w-full text-left p-2 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
-                        >
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">{p.name}</div>
-                          <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate">
-                            {p.path.replace(/^\/Users\/[^/]+/, '~')}
-                          </div>
-                        </button>
-                      ))}
+                      .map(p => {
+                        const existingWs = getProjectWorkstream(p.path, editingWorkstream.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setEditingWorkstream(prev => ({
+                              ...prev,
+                              projects: [...(prev.projects || []), p.path],
+                              showPicker: false
+                            }))}
+                            className="w-full text-left p-2 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
+                              {existingWs && (
+                                <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                                  in {existingWs.name}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate">
+                              {p.path.replace(/^\/Users\/[^/]+/, '~')}
+                            </div>
+                          </button>
+                        );
+                      })}
                     {projects.filter(p => !editingWorkstream.projects?.includes(p.path)).length === 0 && (
                       <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-2">
                         All registered projects added
@@ -1121,18 +1156,28 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {projects
                   .filter(p => !selectedWorkstreamForProject?.projects?.includes(p.path))
-                  .map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => handleAddProject(p.path)}
-                      className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
-                    >
-                      <div className="font-medium text-gray-900 dark:text-white">{p.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-slate-400 font-mono truncate">
-                        {p.path.replace(/^\/Users\/[^/]+/, '~')}
-                      </div>
-                    </button>
-                  ))}
+                  .map(p => {
+                    const existingWs = getProjectWorkstream(p.path, selectedWorkstreamForProject?.id);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => handleAddProject(p.path)}
+                        className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
+                          {existingWs && (
+                            <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                              in {existingWs.name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-slate-400 font-mono truncate">
+                          {p.path.replace(/^\/Users\/[^/]+/, '~')}
+                        </div>
+                      </button>
+                    );
+                  })}
                 {projects.filter(p => !selectedWorkstreamForProject?.projects?.includes(p.path)).length === 0 && (
                   <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-4">
                     All registered projects are already in this workstream.
