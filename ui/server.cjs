@@ -605,7 +605,7 @@ class ConfigUIServer {
 
       case '/api/projects':
         if (req.method === 'GET') return this.json(res, routes.projects.getProjects(this.manager, this.projectDir));
-        if (req.method === 'POST') return this.json(res, routes.projects.addProject(this.manager, body.path, body.name));
+        if (req.method === 'POST') return this.json(res, routes.projects.addProject(this.manager, body.path, body.name, (p) => { this.projectDir = p; }, body.runClaudeInit));
         break;
 
       case '/api/projects/active':

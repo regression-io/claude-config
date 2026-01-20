@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execFileSync } = require('child_process');
 
 /**
  * Get all registered projects with status info
@@ -58,8 +59,9 @@ function getActiveProject(manager, projectDir, getHierarchy, getSubprojects) {
 
 /**
  * Add a project to the registry
+ * @param {boolean} runClaudeInit - If true, run `claude /init` to create CLAUDE.md
  */
-function addProject(manager, projectPath, name, setProjectDir) {
+function addProject(manager, projectPath, name, setProjectDir, runClaudeInit = false) {
   if (!manager) return { error: 'Manager not available' };
 
   const absPath = path.resolve(projectPath.replace(/^~/, os.homedir()));
@@ -75,17 +77,32 @@ function addProject(manager, projectPath, name, setProjectDir) {
   }
 
   const claudeDir = path.join(absPath, '.claude');
+  const claudeMd = path.join(absPath, 'CLAUDE.md');
   const mcpsFile = path.join(claudeDir, 'mcps.json');
-  let claudeCreated = false;
+  let claudeInitRan = false;
+  let claudeInitError = null;
 
-  if (!fs.existsSync(claudeDir)) {
-    fs.mkdirSync(claudeDir, { recursive: true });
-    claudeCreated = true;
+  // Run claude /init if requested and CLAUDE.md doesn't exist
+  if (runClaudeInit && !fs.existsSync(claudeMd)) {
+    try {
+      execFileSync('claude', ['/init'], {
+        cwd: absPath,
+        stdio: 'pipe',
+        timeout: 30000
+      });
+      claudeInitRan = true;
+    } catch (err) {
+      // Claude Code not installed or init failed
+      claudeInitError = err.message;
+    }
   }
 
+  // Ensure .claude/mcps.json exists (for claude-config to work)
+  if (!fs.existsSync(claudeDir)) {
+    fs.mkdirSync(claudeDir, { recursive: true });
+  }
   if (!fs.existsSync(mcpsFile)) {
     fs.writeFileSync(mcpsFile, JSON.stringify({ mcpServers: {} }, null, 2));
-    claudeCreated = true;
   }
 
   const project = {
@@ -105,7 +122,12 @@ function addProject(manager, projectPath, name, setProjectDir) {
 
   manager.saveProjectsRegistry(registry);
 
-  return { success: true, project, claudeCreated };
+  return {
+    success: true,
+    project,
+    claudeInitRan,
+    claudeInitError
+  };
 }
 
 /**

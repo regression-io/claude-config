@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.6] - 2026-01-20
+
+### Added
+
+- **Claude Code Init on Project Register** - Option to run `claude /init` when adding a project
+  - Checkbox in Add Project dialog with preference buttons (Always/Never/Ask)
+  - Creates CLAUDE.md using Claude Code's own initialization
+  - Graceful fallback if Claude Code is not installed
+
 ## [0.36.4] - 2026-01-20
 
 ### Added

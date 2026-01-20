@@ -88,10 +88,10 @@ export const api = {
     return request('/projects');
   },
 
-  async addProject(path, name = null) {
+  async addProject(path, name = null, runClaudeInit = false) {
     return request('/projects', {
       method: 'POST',
-      body: { path, name },
+      body: { path, name, runClaudeInit },
     });
   },
 
