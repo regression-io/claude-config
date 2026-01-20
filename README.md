@@ -1,14 +1,18 @@
 # Claude Config
 
-Configuration helper for **Claude Code** - manage MCPs, rules, permissions, and memory through a visual UI or CLI.
+Configuration helper for **Claude Code** — manage MCPs, rules, permissions, and memory through a visual UI or CLI.
 
 ## Why?
 
-Claude Code works great out of the box. This tool helps when you want to:
-- Configure MCP servers without editing JSON
-- Manage permissions and rules visually
-- Share configurations across projects
-- Set up persistent memory for Claude sessions
+Claude Code works great out of the box. This tool helps when you need more control:
+
+| | |
+|---|---|
+| **MCP Servers** | Configure without editing JSON files |
+| **Permissions** | Visual editor for allow/deny rules |
+| **Rules & Commands** | Manage project-specific guidelines |
+| **Memory** | Persistent context across sessions |
+| **Multi-Project** | Share configurations via hierarchy |
 
 ## Installation
 
@@ -19,11 +23,10 @@ npm install -g @regression-io/claude-config
 ## Quick Start
 
 ```bash
-# Open the configuration UI
 claude-config ui
 ```
 
-Then use Claude Code as normal - just run `claude` in your project directory.
+Then use Claude Code normally — run `claude` in any project directory.
 
 ### CLI Alternative
 
@@ -182,19 +185,25 @@ Environment variables use `${VAR}` syntax and load from `.claude/.env`.
 
 ## Memory System
 
-Persistent memory for Claude Code sessions:
+Persistent memory for Claude Code sessions.
 
-**Global Memory** (`~/.claude/memory/`):
-- `preferences.md` - User preferences (tools, style)
-- `corrections.md` - Mistakes to avoid
-- `facts.md` - Environment facts
+**Global** (`~/.claude/memory/`)
 
-**Project Memory** (`<project>/.claude/memory/`):
-- `context.md` - Project overview
-- `patterns.md` - Code patterns
-- `decisions.md` - Architecture decisions
-- `issues.md` - Known issues
-- `history.md` - Session history
+| File | Purpose |
+|------|---------|
+| `preferences.md` | User preferences and style |
+| `corrections.md` | Mistakes to avoid |
+| `facts.md` | Environment facts |
+
+**Project** (`<project>/.claude/memory/`)
+
+| File | Purpose |
+|------|---------|
+| `context.md` | Project overview |
+| `patterns.md` | Code patterns |
+| `decisions.md` | Architecture decisions |
+| `issues.md` | Known issues |
+| `history.md` | Session history |
 
 Manage via Web UI or edit files directly.
 
@@ -294,35 +303,17 @@ In Workstreams view, adjust Smart Sync settings:
 
 ## Web UI Features
 
-When you run `claude-config ui`:
+| Feature | Description |
+|---------|-------------|
+| **Project Explorer** | Browse and edit `.claude/` folders across your project hierarchy |
+| **Claude Code Settings** | Visual editor for permissions, model, hooks, and behavior |
+| **MCP Registry** | Search GitHub/npm, add and configure MCP servers |
+| **Plugins** | Browse marketplaces, install plugins with scope control |
+| **Memory** | Manage preferences, corrections, patterns, and decisions |
+| **Workstreams** | Group related projects with shared context rules |
+| **Gemini CLI** | Configure Gemini alongside Claude Code |
 
-- **Project Switcher** - Switch between registered projects from header dropdown
-- **Workstream Switcher** - Quick-switch between workstreams from header
-- **Project Explorer** - Browse/edit all .claude folders in hierarchy
-- **Workstreams** - Create and manage context sets for multi-project workflows
-  - Activity tracking with co-activity pattern detection
-  - AI-powered workstream suggestions
-  - Smart Sync for intelligent workstream switching
-  - Manual project add/remove in create/edit dialogs
-- **Sub-Projects** - Auto-detects git repos, plus manually add/hide external folders
-- **Plugins** - Browse and install Claude Code plugins with scope control
-  - Plugin directory with search and filtering
-  - Marketplace management
-  - Scope selection (project/global/local)
-- **MCP Registry** - Search GitHub/npm, add/edit/delete MCPs
-- **Claude Code Settings** - Visual editor for `~/.claude/settings.json`
-  - Permissions (allow/ask/deny rules)
-  - Model selection
-  - Behavior settings
-  - Hooks and advanced options
-- **Gemini CLI Settings** - Visual editor for `~/.gemini/settings.json`
-  - MCP server management for Gemini
-  - Gemini-specific options
-- **Memory System** - Manage preferences, corrections, patterns, decisions
-- **Preferences** - Configure claude-config tool settings
-  - Enabled AI tools (Claude Code, Gemini CLI, Antigravity)
-- **One-Click Updates** - Update badge appears when new version available
-- **Dark Mode** - Theme toggle (light/dark/system)
+Additional features: project/workstream switchers in header, sub-project detection, dark mode, auto-updates.
 
 ## Plugins
 

@@ -53,11 +53,12 @@ Click "Add Project" to register directories where you use Claude Code.
 
 ### 3. Configure as Needed
 
-For each project, you can manage:
-- **Rules** - Guidelines Claude follows in this project
-- **Commands** - Reusable prompts (slash commands)
-- **MCPs** - External tools Claude can use
-- **Permissions** - What Claude can do automatically
+| Feature | Description |
+|---------|-------------|
+| **Rules** | Guidelines Claude follows in this project |
+| **Commands** | Reusable prompts (slash commands) |
+| **MCPs** | External tools Claude can use |
+| **Permissions** | What Claude can do automatically |
 
 ### 4. Use Claude Code Normally
 
