@@ -48,8 +48,8 @@ const navItems = [
   // System section
   { id: 'preferences', label: 'Preferences', icon: Wrench, section: 'System' },
   // Help section
-  { id: 'docs', label: 'Docs & Help', icon: BookOpen, section: 'Help' },
   { id: 'tutorial', label: 'Tutorial', icon: GraduationCap, section: 'Help', isNew: true },
+  { id: 'docs', label: 'Docs & Help', icon: BookOpen, section: 'Help' },
 ];
 
 // Helper to get/set localStorage with JSON
