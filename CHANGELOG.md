@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.12] - 2026-01-20
+
+### Added
+
+- **User-Friendly Permission Tooltips** - Hover over any rule for plain English explanations
+  - Summary: "Run 'npm' command" instead of just showing `Bash(npm:*)`
+  - Detail: "Allows running the npm command with any arguments"
+  - Category meaning: "✓ Allowed automatically — Claude will do this without asking"
+  - Examples: Shows sample values that would match the pattern
+  - Technical pattern shown at bottom for advanced users
+
+---
+
 ## [0.34.9] - 2026-01-20
 
 ### Changed
