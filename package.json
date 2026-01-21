@@ -1,6 +1,6 @@
 {
   "name": "@regression-io/claude-config",
-  "version": "0.37.9",
+  "version": "0.37.10",
   "description": "Configuration management UI for Claude Code and Antigravity - manage MCPs, rules, commands, memory, and project folders",
   "author": "regression.io",
   "main": "config-loader.js",
@@ -16,7 +16,7 @@
     "ui:build": "cd ui && npm run build",
     "version:sync": "node scripts/sync-version.js",
     "version:bump": "node scripts/sync-version.js --bump",
-    "build": "npm run version:bump && cd ui && npm install && npm run build",
+    "build": "cd ui && npm install && npm run build",
     "build:ci": "cd ui && npm install && npm run build",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js",

@@ -111,28 +111,25 @@ async function checkForUpdates(manager, dirname) {
 /**
  * Perform npm update
  */
-function performNpmUpdate(manager) {
-  return new Promise((resolve) => {
-    try {
-      execSync('npm update -g @regression-io/claude-config', {
-        stdio: 'pipe',
-        timeout: 120000
-      });
+async function performNpmUpdate() {
+  try {
+    execSync('npm update -g @regression-io/claude-config', {
+      stdio: 'pipe',
+      timeout: 120000
+    });
 
-      const newVersion = getVersionFromFile(
-        path.join(manager.installDir, 'config-loader.js')
-      );
+    // Get the new version from npm registry since we just updated
+    const newVersion = await fetchNpmVersion();
 
-      resolve({
-        success: true,
-        updateMethod: 'npm',
-        newVersion,
-        message: 'Updated via npm. Please restart the UI to use the new version.'
-      });
-    } catch (error) {
-      resolve({ success: false, error: error.message });
-    }
-  });
+    return {
+      success: true,
+      updateMethod: 'npm',
+      newVersion: newVersion || 'latest',
+      message: 'Updated via npm. Please restart the UI to use the new version.'
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 /**
@@ -254,7 +251,7 @@ async function performUpdate(options, manager) {
   const { updateMethod, sourcePath } = options;
 
   if (updateMethod === 'npm') {
-    return performNpmUpdate(manager);
+    return await performNpmUpdate();
   }
 
   if (sourcePath) {
