@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.18] - 2026-01-21
+
+### Added
+
+- **Multi-select in Add Project dialog** - Select multiple projects at once in workstreams
+  - Checkbox-style selection UI with visual feedback
+  - "Add Selected (N)" button shows selection count
+  - Previously added projects shown as disabled with "added" label
+
 ## [0.36.17] - 2026-01-21
 
 ### Added

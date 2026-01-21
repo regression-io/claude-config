@@ -41,6 +41,7 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
   const [editingWorkstream, setEditingWorkstream] = useState(null);
   const [addProjectDialogOpen, setAddProjectDialogOpen] = useState(false);
   const [selectedWorkstreamForProject, setSelectedWorkstreamForProject] = useState(null);
+  const [selectedProjectsToAdd, setSelectedProjectsToAdd] = useState(new Set());
 
   // Form states
   const [newName, setNewName] = useState('');
@@ -330,24 +331,55 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
     }
   };
 
-  const handleAddProject = async (projectPath) => {
-    if (!selectedWorkstreamForProject) return;
-
-    try {
-      const result = await api.addProjectToWorkstream(selectedWorkstreamForProject.id, projectPath);
-      if (result.success) {
-        setWorkstreams(prev => prev.map(ws =>
-          ws.id === selectedWorkstreamForProject.id ? result.workstream : ws
-        ));
-        toast.success(`Added project to ${selectedWorkstreamForProject.name}`);
+  // Toggle project selection in Add Project dialog
+  const toggleProjectSelection = (projectPath) => {
+    setSelectedProjectsToAdd(prev => {
+      const next = new Set(prev);
+      if (next.has(projectPath)) {
+        next.delete(projectPath);
       } else {
-        toast.error(result.error || 'Failed to add project');
+        next.add(projectPath);
       }
-    } catch (error) {
-      toast.error('Failed to add project: ' + error.message);
+      return next;
+    });
+  };
+
+  // Add all selected projects to workstream
+  const handleAddSelectedProjects = async () => {
+    if (!selectedWorkstreamForProject || selectedProjectsToAdd.size === 0) return;
+
+    setSaving(true);
+    let successCount = 0;
+    let lastWorkstream = null;
+
+    for (const projectPath of selectedProjectsToAdd) {
+      try {
+        const result = await api.addProjectToWorkstream(selectedWorkstreamForProject.id, projectPath);
+        if (result.success) {
+          lastWorkstream = result.workstream;
+          successCount++;
+        }
+      } catch (error) {
+        console.error('Failed to add project:', projectPath, error);
+      }
     }
+
+    if (lastWorkstream) {
+      setWorkstreams(prev => prev.map(ws =>
+        ws.id === selectedWorkstreamForProject.id ? lastWorkstream : ws
+      ));
+    }
+
+    if (successCount > 0) {
+      toast.success(`Added ${successCount} project${successCount > 1 ? 's' : ''} to ${selectedWorkstreamForProject.name}`);
+    } else {
+      toast.error('Failed to add projects');
+    }
+
+    setSaving(false);
     setAddProjectDialogOpen(false);
     setSelectedWorkstreamForProject(null);
+    setSelectedProjectsToAdd(new Set());
   };
 
   const handleRemoveProject = async (workstream, projectPath) => {
@@ -1351,7 +1383,10 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
       {/* Add Project Dialog */}
       <Dialog open={addProjectDialogOpen} onOpenChange={(open) => {
         setAddProjectDialogOpen(open);
-        if (!open) setExpandedProjects({});
+        if (!open) {
+          setExpandedProjects({});
+          setSelectedProjectsToAdd(new Set());
+        }
       }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -1362,12 +1397,13 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-              Select a project or sub-project to add to this workstream:
+              Select projects to add to this workstream (multi-select enabled):
             </p>
             {projects.length > 0 ? (
               <div className="space-y-1 max-h-64 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-900">
                 {projects.map(p => {
                   const isAlreadyAdded = selectedWorkstreamForProject?.projects?.includes(p.path);
+                  const isSelected = selectedProjectsToAdd.has(p.path);
                   const existingWs = getProjectWorkstream(p.path, selectedWorkstreamForProject?.id);
                   const isExpanded = expandedProjects[p.path];
                   const isLoading = loadingSubprojects[p.path];
@@ -1393,16 +1429,29 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => !isAlreadyAdded && handleAddProject(p.path)}
+                          onClick={() => !isAlreadyAdded && toggleProjectSelection(p.path)}
                           disabled={isAlreadyAdded}
                           className={`flex-1 text-left p-2 rounded transition-colors ${
                             isAlreadyAdded
-                              ? 'bg-purple-50 dark:bg-purple-950/30 opacity-50'
-                              : 'hover:bg-purple-50 dark:hover:bg-purple-950/30'
+                              ? 'bg-gray-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'
+                              : isSelected
+                                ? 'bg-purple-100 dark:bg-purple-950/50 ring-2 ring-purple-500'
+                                : 'hover:bg-purple-50 dark:hover:bg-purple-950/30'
                           }`}
                         >
                           <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                isAlreadyAdded
+                                  ? 'bg-gray-300 dark:bg-slate-600 border-gray-300 dark:border-slate-600'
+                                  : isSelected
+                                    ? 'bg-purple-600 border-purple-600'
+                                    : 'border-gray-300 dark:border-slate-600'
+                              }`}>
+                                {(isAlreadyAdded || isSelected) && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
+                            </div>
                             <div className="flex items-center gap-1">
                               {existingWs && (
                                 <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
@@ -1410,11 +1459,11 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                                 </span>
                               )}
                               {isAlreadyAdded && (
-                                <Check className="w-4 h-4 text-purple-600" />
+                                <span className="text-xs text-gray-500 dark:text-slate-400">added</span>
                               )}
                             </div>
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate">
+                          <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate ml-6">
                             {p.path.replace(/^\/Users\/[^/]+/, '~')}
                           </div>
                         </button>
@@ -1425,21 +1474,35 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                         <div className="ml-6 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-slate-700 pl-2">
                           {subprojects.map(sub => {
                             const subAlreadyAdded = selectedWorkstreamForProject?.projects?.includes(sub.dir);
+                            const subIsSelected = selectedProjectsToAdd.has(sub.dir);
                             const subExistingWs = getProjectWorkstream(sub.dir, selectedWorkstreamForProject?.id);
                             return (
                               <button
                                 key={sub.dir}
                                 type="button"
-                                onClick={() => !subAlreadyAdded && handleAddProject(sub.dir)}
+                                onClick={() => !subAlreadyAdded && toggleProjectSelection(sub.dir)}
                                 disabled={subAlreadyAdded}
                                 className={`w-full text-left p-2 rounded transition-colors ${
                                   subAlreadyAdded
-                                    ? 'bg-purple-50 dark:bg-purple-950/30 opacity-50'
-                                    : 'hover:bg-purple-50 dark:hover:bg-purple-950/30'
+                                    ? 'bg-gray-100 dark:bg-slate-800 opacity-50 cursor-not-allowed'
+                                    : subIsSelected
+                                      ? 'bg-purple-100 dark:bg-purple-950/50 ring-2 ring-purple-500'
+                                      : 'hover:bg-purple-50 dark:hover:bg-purple-950/30'
                                 }`}
                               >
                                 <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-700 dark:text-slate-300">{sub.name}</span>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                      subAlreadyAdded
+                                        ? 'bg-gray-300 dark:bg-slate-600 border-gray-300 dark:border-slate-600'
+                                        : subIsSelected
+                                          ? 'bg-purple-600 border-purple-600'
+                                          : 'border-gray-300 dark:border-slate-600'
+                                    }`}>
+                                      {(subAlreadyAdded || subIsSelected) && <Check className="w-3 h-3 text-white" />}
+                                    </div>
+                                    <span className="text-gray-700 dark:text-slate-300">{sub.name}</span>
+                                  </div>
                                   <div className="flex items-center gap-1">
                                     {subExistingWs && (
                                       <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
@@ -1447,11 +1510,11 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                                       </span>
                                     )}
                                     {subAlreadyAdded && (
-                                      <Check className="w-4 h-4 text-purple-600" />
+                                      <span className="text-xs text-gray-500 dark:text-slate-400">added</span>
                                     )}
                                   </div>
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate">
+                                <div className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate ml-6">
                                   {sub.relativePath}
                                 </div>
                               </button>
@@ -1475,8 +1538,23 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddProjectDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setAddProjectDialogOpen(false);
+              setSelectedProjectsToAdd(new Set());
+            }}>
               Cancel
+            </Button>
+            <Button
+              onClick={handleAddSelectedProjects}
+              disabled={selectedProjectsToAdd.size === 0 || saving}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="w-4 h-4 mr-2" />
+              )}
+              Add Selected ({selectedProjectsToAdd.size})
             </Button>
           </DialogFooter>
         </DialogContent>
