@@ -34,6 +34,6 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 npm run version:sync --silent 2>/dev/null
 
 # Stage version files
-git add package.json config-loader.js ui/package.json 2>/dev/null
+git add package.json lib/constants.js ui/package.json 2>/dev/null
 
 echo "📦 Version bumped: $CURRENT_VERSION -> $NEW_VERSION"
