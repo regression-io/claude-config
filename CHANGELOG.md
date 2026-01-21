@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.22] - 2026-01-21
+
+### Fixed
+
+- **Project switching error** - Fixed "Failed to switch project: Failed to fetch" error
+  - Root cause: Missing `setProjectDir` callback parameter in server API call
+  - The function signature required 5 arguments but only 4 were passed
+  - This caused `getSubprojects()` to be `undefined`, crashing the request handler
+
+- **npm update detection** - Improved reliability of version check
+  - Added proper timeout handling using `setTimeout()` method (was using unreliable options property)
+  - Added 10-second timeout on npm registry fetch (previously could hang indefinitely)
+  - Added diagnostic logging to server console for debugging update check issues
+  - Logging shows: installed version, npm version, and any fetch/timeout errors
+
 ## [0.37.20] - 2026-01-21
 
 ### Added

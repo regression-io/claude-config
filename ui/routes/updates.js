@@ -42,7 +42,7 @@ function getVersionFromFile(filePath) {
 function fetchNpmVersion() {
   return new Promise((resolve) => {
     const url = 'https://registry.npmjs.org/@regression-io/claude-config/latest';
-    https.get(url, (res) => {
+    const req = https.get(url, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -52,6 +52,7 @@ function fetchNpmVersion() {
           const tarballUrl = parsed.dist?.tarball;
 
           if (!version || !tarballUrl) {
+            console.log('[update-check] npm registry response missing version or tarball');
             resolve(null);
             return;
           }
@@ -61,8 +62,7 @@ function fetchNpmVersion() {
           const options = {
             hostname: tarball.hostname,
             path: tarball.pathname,
-            method: 'HEAD',
-            timeout: 5000
+            method: 'HEAD'
           };
 
           const verifyReq = https.request(options, (verifyRes) => {
@@ -70,20 +70,35 @@ function fetchNpmVersion() {
             if (verifyRes.statusCode === 200) {
               resolve(version);
             } else {
+              console.log(`[update-check] tarball not accessible (status ${verifyRes.statusCode})`);
               resolve(null);
             }
           });
-          verifyReq.on('error', () => resolve(null));
-          verifyReq.on('timeout', () => {
+          verifyReq.setTimeout(5000, () => {
+            console.log('[update-check] tarball verification timed out');
             verifyReq.destroy();
+            resolve(null);
+          });
+          verifyReq.on('error', (e) => {
+            console.log('[update-check] tarball verification error:', e.message);
             resolve(null);
           });
           verifyReq.end();
         } catch (e) {
+          console.log('[update-check] failed to parse npm response:', e.message);
           resolve(null);
         }
       });
-    }).on('error', () => resolve(null));
+    });
+    req.setTimeout(10000, () => {
+      console.log('[update-check] npm registry request timed out');
+      req.destroy();
+      resolve(null);
+    });
+    req.on('error', (e) => {
+      console.log('[update-check] npm registry error:', e.message);
+      resolve(null);
+    });
   });
 }
 
@@ -118,7 +133,10 @@ async function checkForUpdates(manager, dirname) {
   // Check npm for latest version
   const npmVersion = await fetchNpmVersion();
 
+  console.log(`[update-check] installed: ${installedVersion}, npm: ${npmVersion}`);
+
   if (npmVersion && isNewerVersion(npmVersion, installedVersion)) {
+    console.log('[update-check] update available');
     return {
       updateAvailable: true,
       installedVersion,

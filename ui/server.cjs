@@ -611,8 +611,13 @@ class ConfigUIServer {
       case '/api/projects/active':
         if (req.method === 'GET') return this.json(res, routes.projects.getActiveProject(this.manager, this.projectDir, () => this.getHierarchy(), () => routes.subprojects.getSubprojectsForDir(this.manager, this.config, this.projectDir)));
         if (req.method === 'PUT') {
-          const result = routes.projects.setActiveProject(this.manager, body.id, () => this.getHierarchy(), () => routes.subprojects.getSubprojectsForDir(this.manager, this.config, this.projectDir));
-          if (result.success) this.projectDir = result.project.path;
+          const result = routes.projects.setActiveProject(
+            this.manager,
+            body.id,
+            (newDir) => { this.projectDir = newDir; },
+            () => this.getHierarchy(),
+            () => routes.subprojects.getSubprojectsForDir(this.manager, this.config, this.projectDir)
+          );
           return this.json(res, result);
         }
         break;
