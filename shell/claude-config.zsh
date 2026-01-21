@@ -30,6 +30,20 @@ claude-config() {
     return
   fi
 
+  # Special case: workstream use sets env var for per-session isolation
+  if [[ "$1" == "workstream" && "$2" == "use" && -n "$3" ]]; then
+    export CLAUDE_WORKSTREAM="$3"
+    echo "✓ Activated workstream: $3 (this session)"
+    return
+  fi
+
+  # Special case: workstream deactivate unsets env var
+  if [[ "$1" == "workstream" && "$2" == "deactivate" ]]; then
+    unset CLAUDE_WORKSTREAM
+    echo "✓ Deactivated workstream (this session)"
+    return
+  fi
+
   # Pass all other commands to Node
   node "$CLAUDE_CONFIG_LOADER" "$@"
 }
@@ -81,15 +95,17 @@ _claude_config_completions() {
   commands=(
     'init:Initialize project with template'
     'apply:Generate .mcp.json from config'
-    'apply-template:Add template to existing project'
     'show:Show current project config'
     'list:List available MCPs'
-    'templates:List available templates'
     'add:Add MCP(s) to project'
     'remove:Remove MCP(s) from project'
-    'registry-add:Add MCP to global registry'
-    'registry-remove:Remove MCP from registry'
-    'update:Update from source directory'
+    'workstream:Manage workstreams'
+    'project:Manage projects'
+    'memory:Manage memory'
+    'env:Manage environment variables'
+    'registry:Manage MCP registry'
+    'update:Check and install updates'
+    'ui:Start web UI'
     'version:Show version info'
     'auto:Toggle auto-apply on cd'
   )
