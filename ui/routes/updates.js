@@ -36,7 +36,8 @@ function getVersionFromFile(filePath) {
 }
 
 /**
- * Fetch npm version
+ * Fetch npm version and verify it's installable
+ * Returns version only if the tarball is accessible (CDN propagated)
  */
 function fetchNpmVersion() {
   return new Promise((resolve) => {
@@ -47,7 +48,37 @@ function fetchNpmVersion() {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          resolve(parsed.version || null);
+          const version = parsed.version;
+          const tarballUrl = parsed.dist?.tarball;
+
+          if (!version || !tarballUrl) {
+            resolve(null);
+            return;
+          }
+
+          // Verify tarball is accessible (HEAD request)
+          const tarball = new URL(tarballUrl);
+          const options = {
+            hostname: tarball.hostname,
+            path: tarball.pathname,
+            method: 'HEAD',
+            timeout: 5000
+          };
+
+          const verifyReq = https.request(options, (verifyRes) => {
+            // 200 = accessible, anything else = not yet propagated
+            if (verifyRes.statusCode === 200) {
+              resolve(version);
+            } else {
+              resolve(null);
+            }
+          });
+          verifyReq.on('error', () => resolve(null));
+          verifyReq.on('timeout', () => {
+            verifyReq.destroy();
+            resolve(null);
+          });
+          verifyReq.end();
         } catch (e) {
           resolve(null);
         }
@@ -112,21 +143,41 @@ async function checkForUpdates(manager, dirname) {
  * Perform npm update
  */
 async function performNpmUpdate(targetVersion) {
-  try {
-    // Use npm install @latest instead of npm update for reliable updates
-    execSync('npm install -g @regression-io/claude-config@latest', {
-      stdio: 'pipe',
-      timeout: 120000
-    });
+  const maxRetries = 3;
+  const retryDelayMs = 5000;
 
-    return {
-      success: true,
-      updateMethod: 'npm',
-      newVersion: targetVersion || 'latest',
-      message: 'Updated via npm. Please restart the UI to use the new version.'
-    };
-  } catch (error) {
-    return { success: false, error: error.message };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Use npm install @latest instead of npm update for reliable updates
+      execSync('npm install -g @regression-io/claude-config@latest', {
+        stdio: 'pipe',
+        timeout: 120000
+      });
+
+      return {
+        success: true,
+        updateMethod: 'npm',
+        newVersion: targetVersion || 'latest',
+        message: 'Updated via npm. Please restart the UI to use the new version.'
+      };
+    } catch (error) {
+      const isEtarget = error.message.includes('ETARGET') || error.message.includes('No matching version');
+
+      // Retry on ETARGET (CDN propagation delay) if we have retries left
+      if (isEtarget && attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+        continue;
+      }
+
+      // Final attempt failed or non-retryable error
+      if (isEtarget) {
+        return {
+          success: false,
+          error: `Version not yet available on npm CDN. Please try again in a minute. (${error.message})`
+        };
+      }
+      return { success: false, error: error.message };
+    }
   }
 }
 

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.17] - 2026-01-21
+
+### Fixed
+
+- **Update availability check** - Verify tarball is accessible before showing update button
+  - Previously: UI fetched version from npm registry API, but CDN may not have propagated yet
+  - Now: HEAD request to tarball URL verifies it's actually downloadable
+  - Added retry logic (3 attempts, 5s delay) as safety net for edge cases
+  - Better error message when version not yet available on CDN
+
 ## [0.37.15] - 2026-01-21
 
 ### Fixed
