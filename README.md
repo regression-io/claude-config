@@ -22,11 +22,37 @@ npm install -g @regression-io/claude-config
 
 ## Quick Start
 
+### New Users
+
 ```bash
-claude-config ui
+# 1. Install
+npm install -g @regression-io/claude-config
+
+# 2. Set up auto-start (recommended for PWA users)
+claude-config ui install
+
+# 3. Open the UI
+open http://localhost:3333
 ```
 
-Then use Claude Code normally — run `claude` in any project directory.
+The server now starts automatically on login. Install as a PWA from your browser for app-like access.
+
+### Existing Users (Updating)
+
+```bash
+# Option A: Update via CLI
+claude-config update
+
+# Option B: Update via UI
+# Click the green "Update" button in the header when available
+
+# After updating, restart to pick up changes:
+claude-config ui install   # If using auto-start
+# OR
+claude-config ui stop && claude-config ui   # Manual restart
+```
+
+The UI shows a restart indicator when the running version differs from the installed version.
 
 ### CLI Alternative
 
