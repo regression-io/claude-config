@@ -188,10 +188,10 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
     loadProjects(true);  // Pass true for initial load to show project selector if no active project
-    // Load version info and check for updates
+    // Load version info and check for updates (only show npm updates in header)
     api.checkVersion().then(data => {
       setVersion(data?.installedVersion);
-      if (data?.updateAvailable) {
+      if (data?.updateAvailable && data?.updateMethod === 'npm') {
         setUpdateInfo(data);
       }
     }).catch(() => {});

@@ -98,36 +98,7 @@ async function checkForUpdates(manager, dirname) {
     };
   }
 
-  // Also check local dev paths as fallback
-  const homeDir = process.env.HOME || '';
-  const sourcePaths = [
-    path.join(homeDir, 'projects', 'claude-config'),
-    path.join(homeDir, 'reg', 'my', 'claude-config'),
-    path.join(homeDir, 'src', 'claude-config'),
-    path.join(homeDir, 'dev', 'claude-config'),
-    path.join(homeDir, 'code', 'claude-config'),
-    path.dirname(dirname)
-  ];
-
-  for (const sourcePath of sourcePaths) {
-    const sourceLoaderPath = path.join(sourcePath, 'config-loader.js');
-    if (fs.existsSync(sourceLoaderPath)) {
-      const sourceVersion = getVersionFromFile(sourceLoaderPath);
-
-      if (sourceVersion && isNewerVersion(sourceVersion, installedVersion)) {
-        return {
-          updateAvailable: true,
-          installedVersion,
-          latestVersion: sourceVersion,
-          sourceVersion: sourceVersion, // legacy alias for v0.37.0 compatibility
-          updateMethod: 'local',
-          sourcePath,
-          installDir: manager.installDir
-        };
-      }
-    }
-  }
-
+  // No update available from npm
   return {
     updateAvailable: false,
     installedVersion,
