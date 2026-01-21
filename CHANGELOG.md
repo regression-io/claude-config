@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.24] - 2026-01-21
+
+### Added
+
+- **Auto-start on login** - New commands for macOS LaunchAgent integration
+  - `claude-config ui install` - Install auto-start so UI runs on login
+  - `claude-config ui uninstall` - Remove auto-start
+  - Server auto-restarts if it crashes
+  - Perfect for PWA users who want the app always available
+
 ## [0.37.22] - 2026-01-21
 
 ### Fixed

@@ -18,14 +18,22 @@ const command = args[0] || '';
 // PID file for daemon mode
 const PID_FILE = path.join(os.homedir(), '.claude-config', 'ui.pid');
 
+// LaunchAgent for macOS auto-start
+const LAUNCH_AGENT_LABEL = 'io.regression.claude-config';
+const LAUNCH_AGENT_PATH = path.join(os.homedir(), 'Library', 'LaunchAgents', `${LAUNCH_AGENT_LABEL}.plist`);
+
 // UI command needs special handling (starts web server with better error handling)
 if (command === 'ui' || command === 'web' || command === 'server') {
-  // Check for subcommand: ui stop, ui status
+  // Check for subcommand: ui stop, ui status, ui install, ui uninstall
   const subcommand = args[1];
   if (subcommand === 'stop') {
     stopDaemon();
   } else if (subcommand === 'status') {
     checkDaemonStatus();
+  } else if (subcommand === 'install') {
+    installLaunchAgent();
+  } else if (subcommand === 'uninstall') {
+    uninstallLaunchAgent();
   } else {
     startUI();
   }
@@ -65,21 +73,183 @@ function stopDaemon() {
 }
 
 function checkDaemonStatus() {
-  if (!fs.existsSync(PID_FILE)) {
+  // Check for LaunchAgent first (macOS)
+  if (process.platform === 'darwin' && fs.existsSync(LAUNCH_AGENT_PATH)) {
+    try {
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('launchctl', ['list', LAUNCH_AGENT_LABEL], { encoding: 'utf8' });
+      if (result.status === 0 && result.stdout) {
+        // Parse the PID from output (format: "PID" = 12345;)
+        const pidMatch = result.stdout.match(/"PID"\s*=\s*(\d+)/);
+        if (pidMatch) {
+          console.log(`Daemon: running via LaunchAgent (PID: ${pidMatch[1]})`);
+          console.log(`UI available at: http://localhost:3333`);
+          console.log(`Auto-start: enabled`);
+          return;
+        }
+      }
+    } catch {}
+  }
+
+  // Check PID file (manual daemon mode)
+  if (fs.existsSync(PID_FILE)) {
+    try {
+      const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim());
+      // Check if process is running
+      process.kill(pid, 0);
+      console.log(`Daemon: running (PID: ${pid})`);
+      console.log(`UI available at: http://localhost:3333`);
+      return;
+    } catch (err) {
+      fs.unlinkSync(PID_FILE);
+    }
+  }
+
+  // Check if LaunchAgent exists but not running
+  if (process.platform === 'darwin' && fs.existsSync(LAUNCH_AGENT_PATH)) {
+    console.log('Daemon: not running (LaunchAgent installed but stopped)');
+    console.log('Run: launchctl load ~/Library/LaunchAgents/io.regression.claude-config.plist');
+  } else {
     console.log('Daemon: not running');
+    console.log('Run: claude-config ui');
+  }
+}
+
+function installLaunchAgent() {
+  if (process.platform !== 'darwin') {
+    console.error('Auto-start installation is only supported on macOS.');
+    console.error('On Linux, create a systemd user service instead.');
+    process.exit(1);
+  }
+
+  // Find the claude-config executable
+  let execPath;
+  try {
+    execPath = execSync('which claude-config', { encoding: 'utf8' }).trim();
+  } catch {
+    execPath = path.join(__dirname, 'cli.js');
+  }
+
+  // Get the PATH that includes node
+  let nodePath;
+  try {
+    nodePath = path.dirname(execSync('which node', { encoding: 'utf8' }).trim());
+  } catch {
+    nodePath = '/opt/homebrew/bin:/usr/local/bin';
+  }
+  const envPath = `${nodePath}:/usr/bin:/bin:/usr/sbin:/sbin`;
+
+  const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${LAUNCH_AGENT_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${execPath}</string>
+        <string>ui</string>
+        <string>--foreground</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>${envPath}</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${path.join(os.homedir(), '.claude-config', 'ui.log')}</string>
+    <key>StandardErrorPath</key>
+    <string>${path.join(os.homedir(), '.claude-config', 'ui.log')}</string>
+    <key>WorkingDirectory</key>
+    <string>${os.homedir()}</string>
+</dict>
+</plist>`;
+
+  // Ensure LaunchAgents directory exists
+  const launchAgentsDir = path.dirname(LAUNCH_AGENT_PATH);
+  if (!fs.existsSync(launchAgentsDir)) {
+    fs.mkdirSync(launchAgentsDir, { recursive: true });
+  }
+
+  // Ensure log directory exists
+  const logDir = path.join(os.homedir(), '.claude-config');
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  // Stop existing daemon if running
+  if (fs.existsSync(PID_FILE)) {
+    try {
+      const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim());
+      process.kill(pid, 'SIGTERM');
+      fs.unlinkSync(PID_FILE);
+    } catch {}
+  }
+
+  // Unload existing LaunchAgent if present (using spawn to avoid shell)
+  if (fs.existsSync(LAUNCH_AGENT_PATH)) {
+    try {
+      const { spawnSync } = require('child_process');
+      spawnSync('launchctl', ['unload', LAUNCH_AGENT_PATH], { stdio: 'ignore' });
+    } catch {}
+  }
+
+  // Write plist file
+  fs.writeFileSync(LAUNCH_AGENT_PATH, plistContent);
+
+  // Load the LaunchAgent (using spawn to avoid shell injection)
+  try {
+    const { spawnSync } = require('child_process');
+    const result = spawnSync('launchctl', ['load', LAUNCH_AGENT_PATH]);
+    if (result.status !== 0) {
+      throw new Error(result.stderr?.toString() || 'launchctl failed');
+    }
+  } catch (err) {
+    console.error('Failed to load LaunchAgent:', err.message);
+    process.exit(1);
+  }
+
+  console.log('✓ Installed auto-start for Claude Config UI');
+  console.log('');
+  console.log('The server will now:');
+  console.log('  • Start automatically on login');
+  console.log('  • Restart if it crashes');
+  console.log('  • Run at http://localhost:3333');
+  console.log('');
+  console.log('Your PWA can now connect anytime!');
+  console.log('');
+  console.log('Commands:');
+  console.log('  claude-config ui status     - Check if running');
+  console.log('  claude-config ui uninstall  - Remove auto-start');
+}
+
+function uninstallLaunchAgent() {
+  if (process.platform !== 'darwin') {
+    console.error('Auto-start removal is only supported on macOS.');
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(LAUNCH_AGENT_PATH)) {
+    console.log('Auto-start is not installed.');
     return;
   }
 
+  // Unload the LaunchAgent (using spawn to avoid shell injection)
   try {
-    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim());
-    // Check if process is running
-    process.kill(pid, 0);
-    console.log(`Daemon: running (PID: ${pid})`);
-    console.log(`UI available at: http://localhost:3333`);
-  } catch (err) {
-    console.log('Daemon: not running (stale PID file)');
-    fs.unlinkSync(PID_FILE);
-  }
+    const { spawnSync } = require('child_process');
+    spawnSync('launchctl', ['unload', LAUNCH_AGENT_PATH], { stdio: 'ignore' });
+  } catch {}
+
+  // Remove the plist file
+  fs.unlinkSync(LAUNCH_AGENT_PATH);
+
+  console.log('✓ Removed auto-start for Claude Config UI');
+  console.log('');
+  console.log('To start manually: claude-config ui');
 }
 
 function startDaemon(flags) {
