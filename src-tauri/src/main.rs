@@ -4,24 +4,92 @@
 use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
 
             // Spawn server startup in background
+            let server_handle = app_handle.clone();
             std::thread::spawn(move || {
-                if let Err(e) = start_server(&app_handle) {
+                if let Err(e) = start_server(&server_handle) {
                     eprintln!("Failed to start server: {}", e);
                 }
+            });
+
+            // Check for updates in background
+            let update_handle = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                check_for_updates(update_handle).await;
             });
 
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+async fn check_for_updates(app: tauri::AppHandle) {
+    // Wait a few seconds for the app to fully load
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+
+    match app.updater().check().await {
+        Ok(Some(update)) => {
+            let version = update.version.clone();
+            let body = update.body.clone().unwrap_or_default();
+
+            // Ask user if they want to update
+            let should_update = app.dialog()
+                .message(format!(
+                    "A new version ({}) is available!\n\n{}\n\nWould you like to download and install it?",
+                    version,
+                    body.chars().take(200).collect::<String>()
+                ))
+                .kind(MessageDialogKind::Info)
+                .title("Update Available")
+                .ok_button_label("Update")
+                .cancel_button_label("Later")
+                .blocking_show();
+
+            if should_update {
+                println!("User accepted update to {}", version);
+
+                // Download and install the update
+                match update.download_and_install(|_, _| {}, || {}).await {
+                    Ok(_) => {
+                        app.dialog()
+                            .message("Update installed! The app will now restart.")
+                            .kind(MessageDialogKind::Info)
+                            .title("Update Complete")
+                            .blocking_show();
+
+                        // Restart the app
+                        app.restart();
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to install update: {}", e);
+                        app.dialog()
+                            .message(format!("Failed to install update: {}\n\nPlease download manually from GitHub.", e))
+                            .kind(MessageDialogKind::Error)
+                            .title("Update Failed")
+                            .blocking_show();
+                    }
+                }
+            }
+        }
+        Ok(None) => {
+            println!("No updates available");
+        }
+        Err(e) => {
+            eprintln!("Failed to check for updates: {}", e);
+        }
+    }
 }
 
 fn start_server(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {

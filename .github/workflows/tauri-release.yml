@@ -59,22 +59,33 @@ jobs:
           releaseBody: |
             ## Download
 
-            **macOS**: Download the `.dmg` file for your architecture:
-            - Apple Silicon (M1/M2/M3): `Claude.Config_*_aarch64.dmg`
-            - Intel: `Claude.Config_*_x64.dmg`
+            | Platform | File |
+            |----------|------|
+            | macOS (Apple Silicon) | `ClaudeConfig_*_aarch64.dmg` |
+            | macOS (Intel) | `ClaudeConfig_*_x64.dmg` |
+            | Linux (Debian/Ubuntu) | `ClaudeConfig_*_amd64.deb` |
+            | Linux (Fedora/RHEL) | `ClaudeConfig-*-1.x86_64.rpm` |
+            | Linux (Universal) | `ClaudeConfig_*_amd64.AppImage` |
+            | Windows | `ClaudeConfig_*_x64-setup.exe` |
 
             ## Installation
-            1. Open the `.dmg` file
-            2. Drag Claude Config to Applications
-            3. Double-click to launch
 
-            The app bundles everything needed - no Node.js or npm required.
+            **macOS**: Open `.dmg`, drag to Applications. On first launch, right-click → Open to bypass Gatekeeper.
+
+            **Linux**: Use your package manager or run the AppImage directly.
+
+            **Windows**: Run the installer.
+
+            ## Auto-Updates
+
+            The app checks for updates automatically and will prompt you when a new version is available.
 
             ---
 
-            **CLI users**: Continue using `npm install -g @regression-io/claude-config`
+            **CLI alternative**: `npm install -g @regression-io/claude-config`
           releaseDraft: ${{ github.event.inputs.draft || true }}
           prerelease: false
+          includeUpdaterJson: true
           args: --target ${{ matrix.target }}
 
   build-linux:
@@ -115,6 +126,7 @@ jobs:
           releaseName: 'Claude Config __VERSION__'
           releaseDraft: ${{ github.event.inputs.draft || true }}
           prerelease: false
+          includeUpdaterJson: true
 
   build-windows:
     runs-on: windows-latest
@@ -149,3 +161,4 @@ jobs:
           releaseName: 'Claude Config __VERSION__'
           releaseDraft: ${{ github.event.inputs.draft || true }}
           prerelease: false
+          includeUpdaterJson: true
