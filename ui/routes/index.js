@@ -19,6 +19,7 @@ const memory = require('./memory');
 const settings = require('./settings');
 const env = require('./env');
 const configs = require('./configs');
+const mcpDiscovery = require('./mcp-discovery');
 
 module.exports = {
   projects,
@@ -38,4 +39,5 @@ module.exports = {
   settings,
   env,
   configs,
+  mcpDiscovery,
 };

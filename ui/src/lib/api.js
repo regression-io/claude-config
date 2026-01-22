@@ -249,6 +249,17 @@ export const api = {
     return request(`/mcp-tools${params}`);
   },
 
+  // MCP Server Tools Discovery
+  async getMcpServerTools(serverName = null) {
+    const params = serverName ? `?server=${encodeURIComponent(serverName)}` : '';
+    return request(`/mcp-server-tools${params}`);
+  },
+
+  async clearMcpToolsCache(serverName = null) {
+    const params = serverName ? `?server=${encodeURIComponent(serverName)}` : '';
+    return request(`/mcp-server-tools${params}`, { method: 'DELETE' });
+  },
+
   // File Explorer - .claude folder management
   async getClaudeFolders() {
     return request('/claude-folders');

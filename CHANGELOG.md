@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.1] - 2026-01-22
+
+### Added
+
+- **MCP Permissions Helper** - Quick UI for managing MCP server tool permissions
+  - New "Quick MCP Permissions" section in Claude Code Permissions tab
+  - Lists all configured MCP servers from registry
+  - One-click "Allow all tools" toggle per server (`mcp__servername__*`)
+  - Settings button opens detailed configuration dialog
+  - **Tool Discovery** - Automatically discovers available tools from MCP servers
+    - Spawns servers and queries via JSON-RPC `tools/list`
+    - Shows tool names and descriptions
+    - Works with stdio-based MCP servers
+  - Per-tool permissions: Allow/Ask/Deny for individual tools
+  - Manual tool entry for servers that fail discovery
+  - Badge shows tool count or "All" status
+
+## [0.39.0] - 2026-01-22
+
+### Added
+
+- **Tauri Desktop App** - Native macOS app bundle using Tauri v2
+  - Build with `npm run tauri:build` to create `.app` and `.dmg`
+  - Development mode with `npm run tauri:dev`
+  - Bundles Node.js server as sidecar process
+  - WebView opens to localhost:3333 automatically
+  - App icon with gear design in purple gradient
+  - True desktop experience without CLI commands
+  - CLI package (`npm install -g @regression-io/claude-config`) still works independently
+
 ## [0.38.3] - 2026-01-22
 
 ### Fixed

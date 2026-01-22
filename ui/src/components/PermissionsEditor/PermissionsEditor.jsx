@@ -23,13 +23,15 @@ import { toast } from "sonner";
 import PermissionRuleGroup from './PermissionRuleGroup';
 import PermissionRuleForm from './PermissionRuleForm';
 import ImportExportDialog from './ImportExportDialog';
+import McpQuickPermissions from './McpQuickPermissions';
 import { getCategoryConfig, getCategoryTooltip, groupRulesByType } from './utils';
 
 export default function PermissionsEditor({
   permissions: initialPermissions,
   onSave,
   loading,
-  readOnly = false
+  readOnly = false,
+  mcpServers = {}
 }) {
   const [permissions, setPermissions] = useState({
     allow: [],
@@ -144,6 +146,46 @@ export default function PermissionsEditor({
     setPermissions(normalized);
     autoSave(normalized);
     toast.success('Permissions imported');
+  }, [autoSave]);
+
+  // Toggle MCP server "allow all" permission
+  const handleMcpToggle = useCallback((serverName, pattern, enabled) => {
+    if (enabled) {
+      // Add to allow list
+      handleAddRule('allow', pattern);
+    } else {
+      // Remove from allow list
+      handleDeleteRule('allow', pattern);
+    }
+  }, [handleAddRule, handleDeleteRule]);
+
+  // Update MCP tool permission (from config dialog)
+  const handleMcpPermissionUpdate = useCallback((serverName, pattern, action) => {
+    setPermissions(prev => {
+      const newPermissions = {
+        allow: [...(prev.allow || [])],
+        ask: [...(prev.ask || [])],
+        deny: [...(prev.deny || [])]
+      };
+
+      // Remove from all categories first
+      newPermissions.allow = newPermissions.allow.filter(r => r !== pattern);
+      newPermissions.ask = newPermissions.ask.filter(r => r !== pattern);
+      newPermissions.deny = newPermissions.deny.filter(r => r !== pattern);
+
+      // Add to the specified category (unless removing)
+      if (action === 'allow') {
+        newPermissions.allow.push(pattern);
+      } else if (action === 'ask') {
+        newPermissions.ask.push(pattern);
+      } else if (action === 'deny') {
+        newPermissions.deny.push(pattern);
+      }
+      // 'remove' action just removes from all, which we already did
+
+      autoSave(newPermissions);
+      return newPermissions;
+    });
   }, [autoSave]);
 
   // Open add dialog
@@ -263,6 +305,17 @@ export default function PermissionsEditor({
           </Alert>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Quick MCP Permissions */}
+      {!loading && Object.keys(mcpServers).length > 0 && (
+        <McpQuickPermissions
+          mcpServers={mcpServers}
+          permissions={permissions}
+          onToggle={handleMcpToggle}
+          onUpdatePermission={handleMcpPermissionUpdate}
+          readOnly={readOnly}
+        />
+      )}
 
       {/* Loading State */}
       {loading && (

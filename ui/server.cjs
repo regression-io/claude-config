@@ -511,6 +511,19 @@ class ConfigUIServer {
         }
         break;
 
+      case '/api/mcp-server-tools':
+        if (req.method === 'GET') {
+          if (query.server) {
+            return this.json(res, await routes.mcpDiscovery.getServerTools(this.manager, query.server));
+          } else {
+            return this.json(res, await routes.mcpDiscovery.getAllServerTools(this.manager));
+          }
+        }
+        if (req.method === 'DELETE') {
+          return this.json(res, routes.mcpDiscovery.clearCache(query.server));
+        }
+        break;
+
       case '/api/claude-folders':
         return this.json(res, this.getClaudeFolders());
 

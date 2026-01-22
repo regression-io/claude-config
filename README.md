@@ -10,6 +10,7 @@ Claude Code works great out of the box. This tool helps when you need more contr
 |---|---|
 | **MCP Servers** | Configure without editing JSON files |
 | **Permissions** | Visual editor for allow/deny rules |
+| **MCP Tool Permissions** | Discover and control individual MCP tools |
 | **Rules & Commands** | Manage project-specific guidelines |
 | **Memory** | Persistent context across sessions |
 | **Multi-Project** | Share configurations via hierarchy |
@@ -527,6 +528,31 @@ User settings stored in `~/.claude-config/config.json`:
 | `ui.port` | Default port for web UI |
 | `ui.openBrowser` | Auto-open browser on `claude-config ui` |
 
+## Native Desktop App (Tauri)
+
+For a true desktop experience without running CLI commands, you can build a native macOS app.
+
+### Building the Desktop App
+
+```bash
+# Prerequisites: Rust toolchain
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Build the app
+npm run tauri:build
+```
+
+The `.app` bundle will be created in `src-tauri/target/release/bundle/macos/`.
+
+### Development Mode
+
+```bash
+# Run in development with hot reload
+npm run tauri:dev
+```
+
+This opens the native window connected to the local Node.js server.
+
 ## Requirements
 
 - Node.js 18+
@@ -534,6 +560,7 @@ User settings stored in `~/.claude-config/config.json`:
   - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
   - **Linux**: `build-essential` package
   - **Windows**: Visual Studio Build Tools
+- **For Tauri builds**: Rust toolchain (install via rustup.rs)
 
 ## Development
 

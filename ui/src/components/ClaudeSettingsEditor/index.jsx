@@ -77,7 +77,8 @@ export default function ClaudeSettingsEditor({
   settings: initialSettings,
   onSave,
   loading,
-  settingsPath = '~/.claude/settings.json'
+  settingsPath = '~/.claude/settings.json',
+  mcpServers = {}
 }) {
   const [settings, setSettings] = useState({});
   const [activeTab, setActiveTab] = useState('permissions');
@@ -290,6 +291,7 @@ export default function ClaudeSettingsEditor({
               permissions={settings.permissions}
               onSave={handlePermissionsChange}
               loading={false}
+              mcpServers={mcpServers}
             />
           </TabsContent>
 

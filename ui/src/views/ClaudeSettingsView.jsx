@@ -6,17 +6,23 @@ import api from "@/lib/api";
 
 export default function ClaudeSettingsView() {
   const [claudeSettings, setClaudeSettings] = useState(null);
+  const [mcpServers, setMcpServers] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadClaudeSettings();
+    loadData();
   }, []);
 
-  const loadClaudeSettings = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await api.getClaudeSettings();
-      setClaudeSettings(data.settings);
+      // Fetch settings and registry in parallel
+      const [settingsData, registryData] = await Promise.all([
+        api.getClaudeSettings(),
+        api.getRegistry()
+      ]);
+      setClaudeSettings(settingsData.settings);
+      setMcpServers(registryData.mcpServers || {});
     } catch (error) {
       console.error('Failed to load Claude settings:', error);
     } finally {
@@ -50,6 +56,7 @@ export default function ClaudeSettingsView() {
           onSave={handleSaveClaudeSettings}
           loading={loading}
           settingsPath="~/.claude/settings.json"
+          mcpServers={mcpServers}
         />
       </div>
 
