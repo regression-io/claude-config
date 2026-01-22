@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Claude Config",
+  "productName": "ClaudeConfig",
   "version": "0.39.0",
   "identifier": "io.regression.claude-config",
   "build": {
