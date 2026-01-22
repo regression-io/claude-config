@@ -4,8 +4,8 @@
   "version": "0.39.0",
   "identifier": "io.regression.claude-config",
   "build": {
-    "beforeBuildCommand": "cd .. && npm run tauri:prepare && npm run build",
-    "beforeDevCommand": "cd .. && npm run build",
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "",
     "devUrl": "http://localhost:3333",
     "frontendDist": "../ui/dist"
   },
