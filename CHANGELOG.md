@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.3] - 2026-01-22
+
+### Fixed
+
+- **node-pty compatibility** - Auto-rebuild node-pty from source for newer Node.js versions
+  - Prebuilt binaries may not be available for Node.js 25+
+  - Postinstall script now tests node-pty and rebuilds if incompatible
+  - Shows clear progress messages during rebuild
+  - Requires build tools (Xcode CLI on macOS, build-essential on Linux)
+
 ## [0.38.0] - 2026-01-21
 
 ### Added

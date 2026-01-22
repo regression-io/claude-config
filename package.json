@@ -1,6 +1,6 @@
 {
   "name": "@regression-io/claude-config",
-  "version": "0.38.2",
+  "version": "0.38.4",
   "description": "Configuration management UI for Claude Code and Antigravity - manage MCPs, rules, commands, memory, and project folders",
   "author": "regression.io",
   "main": "config-loader.js",
@@ -21,7 +21,10 @@
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js",
     "test": "node --test test/*.test.js",
-    "release": "./scripts/release.sh"
+    "release": "./scripts/release.sh",
+    "tauri:prepare": "node scripts/tauri-prepare.js",
+    "tauri:dev": "npm run build && cargo tauri dev",
+    "tauri:build": "npm run tauri:prepare && cargo tauri build"
   },
   "keywords": [
     "claude",

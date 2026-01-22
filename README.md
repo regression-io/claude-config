@@ -530,6 +530,10 @@ User settings stored in `~/.claude-config/config.json`:
 ## Requirements
 
 - Node.js 18+
+- Build tools (for newer Node.js versions without prebuilt binaries):
+  - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+  - **Linux**: `build-essential` package
+  - **Windows**: Visual Studio Build Tools
 
 ## Development
 

@@ -1,18 +1,13 @@
-import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import React, { useRef, useCallback } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import Terminal from './Terminal';
+import { cn } from '@/lib/utils';
 
 /**
  * Dialog wrapper for the Terminal component
- * Used to run commands like `claude /init` in a popup
+ * Uses custom dialog implementation to prevent keyboard events from closing
  */
 export default function TerminalDialog({
   open,
@@ -23,47 +18,91 @@ export default function TerminalDialog({
   initialCommand,
   onExit
 }) {
+  const terminalContainerRef = useRef(null);
+
   const handleExit = (exitCode, signal) => {
     if (onExit) {
       onExit(exitCode, signal);
     }
   };
 
+  // Focus the terminal container when dialog opens
+  const handleOpenAutoFocus = useCallback((e) => {
+    e.preventDefault();
+    // Focus will be handled by the terminal component
+  }, []);
+
+  // Prevent Escape from closing while terminal is active
+  const handleEscapeKeyDown = useCallback((e) => {
+    // Let Escape close the dialog (default behavior)
+    // But prevent other keys from propagating
+  }, []);
+
+  // Prevent keyboard events from bubbling to dialog
+  const handleKeyDown = useCallback((e) => {
+    // Stop all keyboard events from reaching the dialog
+    // except Escape which should close it
+    if (e.key !== 'Escape') {
+      e.stopPropagation();
+    }
+  }, []);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle>{title}</DialogTitle>
-              {description && (
-                <DialogDescription className="mt-1">
-                  {description}
-                </DialogDescription>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </DialogHeader>
-        <div className="flex-1 p-2 min-h-0">
-          {open && (
-            <Terminal
-              cwd={cwd}
-              initialCommand={initialCommand}
-              onExit={handleExit}
-              height="100%"
-              className="h-full"
-            />
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
+            "max-w-4xl w-full h-[600px] flex flex-col p-0 gap-0",
+            "border bg-background shadow-lg sm:rounded-lg",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          onOpenAutoFocus={handleOpenAutoFocus}
+          onEscapeKeyDown={handleEscapeKeyDown}
+          onKeyDown={handleKeyDown}
+        >
+          {/* Header */}
+          <div className="px-4 py-3 border-b flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
+                  {title}
+                </DialogPrimitive.Title>
+                {description && (
+                  <DialogPrimitive.Description className="text-sm text-muted-foreground mt-1">
+                    {description}
+                  </DialogPrimitive.Description>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => onOpenChange(false)}
+                tabIndex={-1}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Terminal container */}
+          <div ref={terminalContainerRef} className="flex-1 p-2 min-h-0">
+            {open && (
+              <Terminal
+                cwd={cwd}
+                initialCommand={initialCommand}
+                onExit={handleExit}
+                height="100%"
+                className="h-full"
+              />
+            )}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
