@@ -5,7 +5,6 @@
 const projects = require('./projects');
 const workstreams = require('./workstreams');
 const activity = require('./activity');
-const smartSync = require('./smart-sync');
 const subprojects = require('./subprojects');
 const registry = require('./registry');
 const rules = require('./rules');
@@ -25,7 +24,6 @@ module.exports = {
   projects,
   workstreams,
   activity,
-  smartSync,
   subprojects,
   registry,
   rules,

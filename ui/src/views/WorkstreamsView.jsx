@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Layers, Plus, Trash2, RefreshCw, Check, Edit2, Save, X,
-  FolderPlus, FolderMinus, ChevronDown, ChevronRight, Play,
+  FolderPlus, FolderMinus, ChevronDown, ChevronRight,
   Loader2, FileText, AlertCircle, CheckCircle2, Download,
-  Activity, Sparkles, Clock, BarChart3, Zap, HelpCircle
+  Activity, Sparkles, BarChart3, Zap, HelpCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,6 @@ import api from "@/lib/api";
 
 export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
   const [workstreams, setWorkstreams] = useState([]);
-  const [activeId, setActiveId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -71,10 +70,6 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
     }
   });
 
-  // Smart Sync settings
-  const [smartSyncStatus, setSmartSyncStatus] = useState(null);
-  const [updatingSmartSync, setUpdatingSmartSync] = useState(false);
-
   useEffect(() => {
     loadWorkstreams();
     loadHookStatus();
@@ -93,49 +88,17 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
   const loadActivity = async () => {
     try {
       setLoadingActivity(true);
-      const [summary, suggestionsData, syncStatus] = await Promise.all([
+      const [summary, suggestionsData] = await Promise.all([
         api.getActivitySummary(),
         api.getWorkstreamSuggestions(),
-        api.getSmartSyncStatus(),
       ]);
       setActivitySummary(summary);
       setSuggestions(suggestionsData.suggestions || []);
-      setSmartSyncStatus(syncStatus);
     } catch (error) {
       // Activity tracking may not have data yet, that's OK
       console.log('Activity data not available:', error.message);
     } finally {
       setLoadingActivity(false);
-    }
-  };
-
-  const handleSmartSyncToggle = async (enabled) => {
-    setUpdatingSmartSync(true);
-    try {
-      const result = await api.smartSyncUpdateSettings({ enabled });
-      if (result.settings) {
-        setSmartSyncStatus(prev => ({ ...prev, ...result.settings }));
-        toast.success(enabled ? 'Smart Sync enabled' : 'Smart Sync disabled');
-      }
-    } catch (error) {
-      toast.error('Failed to update Smart Sync settings');
-    } finally {
-      setUpdatingSmartSync(false);
-    }
-  };
-
-  const handleThresholdChange = async (threshold) => {
-    setUpdatingSmartSync(true);
-    try {
-      const result = await api.smartSyncUpdateSettings({ autoSwitchThreshold: threshold });
-      if (result.settings) {
-        setSmartSyncStatus(prev => ({ ...prev, ...result.settings }));
-        toast.success(`Auto-switch threshold set to ${threshold}%`);
-      }
-    } catch (error) {
-      toast.error('Failed to update threshold');
-    } finally {
-      setUpdatingSmartSync(false);
     }
   };
 
@@ -230,7 +193,6 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
       setLoading(true);
       const data = await api.getWorkstreams();
       setWorkstreams(data.workstreams || []);
-      setActiveId(data.activeId);
     } catch (error) {
       toast.error('Failed to load workstreams');
     } finally {
@@ -249,9 +211,6 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
       const result = await api.createWorkstream(newName.trim(), newProjects, newRules);
       if (result.success) {
         setWorkstreams(prev => [...prev, result.workstream]);
-        if (!activeId) {
-          setActiveId(result.workstream.id);
-        }
         toast.success(`Created workstream: ${newName}`);
         setCreateDialogOpen(false);
         setNewName('');
@@ -269,21 +228,6 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
     }
   };
 
-  const handleActivate = async (workstream) => {
-    try {
-      const result = await api.setActiveWorkstream(workstream.id);
-      if (result.success) {
-        setActiveId(workstream.id);
-        toast.success(`Switched to: ${workstream.name}`);
-        onWorkstreamChange?.(result.workstream);
-      } else {
-        toast.error(result.error || 'Failed to switch workstream');
-      }
-    } catch (error) {
-      toast.error('Failed to switch workstream: ' + error.message);
-    }
-  };
-
   const handleDelete = async (workstream) => {
     if (!confirm(`Delete workstream "${workstream.name}"?\n\nThis cannot be undone.`)) {
       return;
@@ -293,9 +237,6 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
       const result = await api.deleteWorkstream(workstream.id);
       if (result.success) {
         setWorkstreams(prev => prev.filter(ws => ws.id !== workstream.id));
-        if (activeId === workstream.id) {
-          setActiveId(workstreams.find(ws => ws.id !== workstream.id)?.id || null);
-        }
         toast.success(`Deleted workstream: ${workstream.name}`);
       } else {
         toast.error(result.error || 'Failed to delete workstream');
@@ -491,11 +432,7 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
               <div key={ws.id} className="group">
                 {/* Workstream Header */}
                 <div
-                  className={`p-4 flex items-center gap-4 transition-colors cursor-pointer ${
-                    ws.id === activeId
-                      ? 'bg-purple-50 dark:bg-purple-950/30'
-                      : 'hover:bg-gray-50 dark:hover:bg-slate-900'
-                  }`}
+                  className="p-4 flex items-center gap-4 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-900"
                   onClick={() => setExpandedId(expandedId === ws.id ? null : ws.id)}
                 >
                   {/* Expand Icon */}
@@ -508,31 +445,16 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
                   </div>
 
                   {/* Status Icon */}
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    ws.id === activeId
-                      ? 'bg-purple-100 dark:bg-purple-900/50'
-                      : 'bg-gray-100 dark:bg-slate-800'
-                  }`}>
-                    {ws.id === activeId ? (
-                      <Check className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    ) : (
-                      <Layers className="w-5 h-5 text-gray-500 dark:text-slate-400" />
-                    )}
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-slate-800">
+                    <Layers className="w-5 h-5 text-gray-500 dark:text-slate-400" />
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className={`font-medium truncate ${
-                        ws.id === activeId ? 'text-purple-700 dark:text-purple-400' : 'text-gray-900 dark:text-white'
-                      }`}>
+                      <h3 className="font-medium truncate text-gray-900 dark:text-white">
                         {ws.name}
                       </h3>
-                      {ws.id === activeId && (
-                        <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">
-                          Active
-                        </span>
-                      )}
                       {ws.projects?.length > 0 && (
                         <span className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 px-1.5 py-0.5 rounded">
                           {ws.projects.length} project{ws.projects.length !== 1 ? 's' : ''}
@@ -555,16 +477,6 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                    {ws.id !== activeId && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleActivate(ws)}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <Play className="w-4 h-4 mr-1" />
-                        Activate
-                      </Button>
-                    )}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -858,109 +770,13 @@ export default function WorkstreamsView({ projects = [], onWorkstreamChange }) {
         </div>
       )}
 
-      {/* Smart Sync Settings */}
-      {smartSyncStatus && (
-        <div className="bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              <h3 className="font-medium text-gray-900 dark:text-white">Smart Sync</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500 dark:text-slate-400">
-                {smartSyncStatus.enabled ? 'Enabled' : 'Disabled'}
-              </span>
-              <button
-                onClick={() => handleSmartSyncToggle(!smartSyncStatus.enabled)}
-                disabled={updatingSmartSync}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  smartSyncStatus.enabled ? 'bg-purple-600' : 'bg-gray-200 dark:bg-slate-700'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    smartSyncStatus.enabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-
-          <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-            Automatically suggest workstream switches based on your coding patterns.
-          </p>
-
-          {/* Setup warning if no activity data */}
-          {(!activitySummary || activitySummary.totalSessions === 0) && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
-              <div className="flex items-start gap-2">
-                <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-800 dark:text-amber-300">Activity tracking not configured</p>
-                  <p className="text-amber-700 dark:text-amber-400 mt-1">
-                    Smart Sync needs activity data to work. Add to <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded text-xs">~/.claude/hooks/post-response.sh</code>:
-                  </p>
-                  <pre className="mt-2 bg-amber-100 dark:bg-amber-900/50 p-2 rounded text-xs font-mono overflow-x-auto">
-                    source ~/.claude-config/hooks/activity-track.sh
-                  </pre>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {smartSyncStatus.enabled && (
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                    Auto-switch threshold
-                  </label>
-                  <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
-                    {smartSyncStatus.autoSwitchThreshold}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="100"
-                  step="5"
-                  value={smartSyncStatus.autoSwitchThreshold}
-                  onChange={(e) => handleThresholdChange(parseInt(e.target.value))}
-                  disabled={updatingSmartSync}
-                  className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                />
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                  Auto-switch when activity match is above this threshold (silently, no prompt)
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-3">
-                  <div className="text-gray-500 dark:text-slate-400 text-xs mb-1">Saved Choices</div>
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {smartSyncStatus.savedChoicesCount || 0}
-                  </div>
-                </div>
-                <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-3">
-                  <div className="text-gray-500 dark:text-slate-400 text-xs mb-1">Dismissed Nudges</div>
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {smartSyncStatus.dismissedNudgesCount || 0}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* CLI Hint */}
       <div className="bg-gray-50 dark:bg-slate-900 rounded-lg p-4 border border-transparent dark:border-slate-800">
         <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">CLI Commands</h4>
         <div className="space-y-1 text-sm text-gray-600 dark:text-slate-400 font-mono">
           <p>claude-config workstream                  # List workstreams</p>
+          <p>claude-config workstream use "Name"      # Set workstream for this tab</p>
           <p>claude-config workstream create "Name"   # Create workstream</p>
-          <p>claude-config workstream use "Name"      # Activate workstream</p>
-          <p>claude-config workstream inject          # Output active rules</p>
         </div>
       </div>
 

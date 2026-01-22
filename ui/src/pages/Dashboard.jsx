@@ -6,8 +6,6 @@ import {
 } from 'lucide-react';
 import FileExplorer from "@/components/FileExplorer";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
-import WorkstreamSwitcher from "@/components/WorkstreamSwitcher";
-import SmartSyncToast from "@/components/SmartSyncToast";
 import WelcomeModal from "@/components/WelcomeModal";
 import AddProjectDialog from "@/components/AddProjectDialog";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -387,9 +385,6 @@ export default function Dashboard() {
               onAddClick={() => setAddProjectOpen(true)}
               onManageClick={() => setCurrentView('projects')}
             />
-            <WorkstreamSwitcher
-              onManageClick={() => setCurrentView('workstreams')}
-            />
           </div>
 
           <div className="flex items-center gap-3">
@@ -490,16 +485,6 @@ export default function Dashboard() {
         open={addProjectOpen}
         onOpenChange={setAddProjectOpen}
         onAdded={handleProjectAdded}
-      />
-
-      {/* Smart Sync Nudges */}
-      <SmartSyncToast
-        enabled={true}
-        pollInterval={30000}
-        onWorkstreamChange={(ws) => {
-          toast.success(`Switched to workstream: ${ws.name}`);
-          // Refresh workstream state if needed
-        }}
       />
 
       {/* First-time Welcome Modal */}

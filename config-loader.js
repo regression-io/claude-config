@@ -30,7 +30,6 @@ const { envList, envSet, envUnset } = require('./lib/env');
 const { getProjectsRegistryPath, loadProjectsRegistry, saveProjectsRegistry, projectList, projectAdd, projectRemove } = require('./lib/projects');
 const { getWorkstreamsPath, loadWorkstreams, saveWorkstreams, workstreamList, workstreamCreate, workstreamUpdate, workstreamDelete, workstreamUse, workstreamActive, workstreamAddProject, workstreamRemoveProject, workstreamInject, workstreamDetect, workstreamGet, getActiveWorkstream, countWorkstreamsForProject, workstreamInstallHook, workstreamInstallHookGemini, workstreamDeactivate, workstreamCheckPath } = require('./lib/workstreams');
 const { getActivityPath, getDefaultActivity, loadActivity, saveActivity, detectProjectRoot, activityLog, activitySummary, generateWorkstreamName, activitySuggestWorkstreams, activityClear } = require('./lib/activity');
-const { getSmartSyncPath, loadSmartSyncPrefs, saveSmartSyncPrefs, smartSyncRememberChoice, smartSyncDismissNudge, smartSyncUpdateSettings, smartSyncDetect, smartSyncCheckNudge, smartSyncHandleAction, smartSyncStatus } = require('./lib/smart-sync');
 const { runCli } = require('./lib/cli');
 
 class ClaudeConfigManager {
@@ -146,18 +145,6 @@ class ClaudeConfigManager {
   generateWorkstreamName(projects) { return generateWorkstreamName(projects); }
   activitySuggestWorkstreams() { return activitySuggestWorkstreams(this.installDir); }
   activityClear(olderThanDays) { return activityClear(this.installDir, olderThanDays); }
-
-  // Smart Sync
-  getSmartSyncPath() { return getSmartSyncPath(this.installDir); }
-  loadSmartSyncPrefs() { return loadSmartSyncPrefs(this.installDir); }
-  saveSmartSyncPrefs(prefs) { return saveSmartSyncPrefs(this.installDir, prefs); }
-  smartSyncRememberChoice(projectPath, workstreamId, choice) { return smartSyncRememberChoice(this.installDir, projectPath, workstreamId, choice); }
-  smartSyncDismissNudge(nudgeKey) { return smartSyncDismissNudge(this.installDir, nudgeKey); }
-  smartSyncUpdateSettings(settings) { return smartSyncUpdateSettings(this.installDir, settings); }
-  smartSyncDetect(currentProjects) { return smartSyncDetect(this.installDir, currentProjects); }
-  smartSyncCheckNudge(currentProjects) { return smartSyncCheckNudge(this.installDir, currentProjects); }
-  smartSyncHandleAction(nudgeKey, action, context) { return smartSyncHandleAction(this.installDir, nudgeKey, action, context); }
-  smartSyncStatus() { return smartSyncStatus(this.installDir); }
 
   // Update - check npm for updates or update from local source
   async update(args = []) {

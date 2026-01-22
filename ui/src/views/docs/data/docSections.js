@@ -47,7 +47,6 @@ const docSections = [
       { id: 'creating-workstreams', title: 'Creating Workstreams' },
       { id: 'workstream-hooks', title: 'Hook Integration' },
       { id: 'activity-tracking', title: 'Activity Tracking' },
-      { id: 'smart-sync', title: 'Smart Sync' },
     ]
   },
   {

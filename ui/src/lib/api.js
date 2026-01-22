@@ -598,45 +598,6 @@ export const api = {
     });
   },
 
-  // Smart Sync
-  async getSmartSyncStatus() {
-    return request('/smart-sync/status');
-  },
-
-  async smartSyncDetect(projects) {
-    return request('/smart-sync/detect', {
-      method: 'POST',
-      body: { projects },
-    });
-  },
-
-  async smartSyncCheckNudge(projects) {
-    return request('/smart-sync/nudge', {
-      method: 'POST',
-      body: { projects },
-    });
-  },
-
-  async smartSyncHandleAction(nudgeKey, action, context = {}) {
-    return request('/smart-sync/action', {
-      method: 'POST',
-      body: { nudgeKey, action, context },
-    });
-  },
-
-  async smartSyncUpdateSettings(settings) {
-    return request('/smart-sync/settings', {
-      method: 'PUT',
-      body: settings,
-    });
-  },
-
-  async smartSyncRememberChoice(projectPath, workstreamId, choice) {
-    return request('/smart-sync/remember', {
-      method: 'POST',
-      body: { projectPath, workstreamId, choice },
-    });
-  },
 };
 
 export default api;
