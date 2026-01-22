@@ -23,24 +23,43 @@ const SERVER_DIR = path.join(SRC_TAURI, 'server');
 // Node.js version to bundle (LTS)
 const NODE_VERSION = '20.18.1';
 
-// Platform detection
-function getPlatform() {
-  const platform = os.platform();
-  const arch = os.arch();
+// Target triple to Node.js platform mapping
+const TARGET_TO_NODE_PLATFORM = {
+  'aarch64-apple-darwin': 'darwin-arm64',
+  'x86_64-apple-darwin': 'darwin-x64',
+  'aarch64-pc-windows-msvc': 'win-arm64',
+  'x86_64-pc-windows-msvc': 'win-x64',
+  'aarch64-unknown-linux-gnu': 'linux-arm64',
+  'x86_64-unknown-linux-gnu': 'linux-x64',
+};
 
-  if (platform === 'darwin') {
-    return arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
-  } else if (platform === 'win32') {
-    return arch === 'arm64' ? 'win-arm64' : 'win-x64';
-  } else if (platform === 'linux') {
-    return arch === 'arm64' ? 'linux-arm64' : 'linux-x64';
+// Parse --target argument from CLI
+function getTargetFromArgs() {
+  const args = process.argv.slice(2);
+  const targetIdx = args.indexOf('--target');
+  if (targetIdx !== -1 && args[targetIdx + 1]) {
+    return args[targetIdx + 1];
   }
-
-  throw new Error(`Unsupported platform: ${platform}-${arch}`);
+  return null;
 }
 
-// Get Tauri target triple
+// Get target triple from env or args, fallback to host detection
 function getTauriTarget() {
+  // Check command line --target
+  const argTarget = getTargetFromArgs();
+  if (argTarget) {
+    console.log(`Using target from --target: ${argTarget}`);
+    return argTarget;
+  }
+
+  // Check environment variables
+  const envTarget = process.env.TAURI_TARGET || process.env.TARGET;
+  if (envTarget) {
+    console.log(`Using target from environment: ${envTarget}`);
+    return envTarget;
+  }
+
+  // Fallback to host platform detection
   const platform = os.platform();
   const arch = os.arch();
 
@@ -53,6 +72,15 @@ function getTauriTarget() {
   }
 
   throw new Error(`Unsupported platform: ${platform}-${arch}`);
+}
+
+// Platform detection for Node.js download
+function getPlatform(tauriTarget) {
+  const nodePlatform = TARGET_TO_NODE_PLATFORM[tauriTarget];
+  if (!nodePlatform) {
+    throw new Error(`Unknown target: ${tauriTarget}`);
+  }
+  return nodePlatform;
 }
 
 // Download a file
@@ -119,8 +147,8 @@ function extractArchive(archivePath, destDir) {
 
 // Download Node.js binary
 async function downloadNode() {
-  const platform = getPlatform();
   const tauriTarget = getTauriTarget();
+  const platform = getPlatform(tauriTarget);
   const ext = platform.startsWith('win') ? 'zip' : 'tar.gz';
   const nodeDir = `node-v${NODE_VERSION}-${platform}`;
   const archiveName = `${nodeDir}.${ext}`;
