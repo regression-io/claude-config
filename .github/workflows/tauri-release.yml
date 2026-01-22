@@ -35,7 +35,7 @@ jobs:
           node-version: '20'
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -90,7 +90,7 @@ jobs:
           node-version: '20'
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install system dependencies
         run: |
@@ -129,7 +129,7 @@ jobs:
           node-version: '20'
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
         run: npm install
