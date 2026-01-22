@@ -9,6 +9,9 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: write
+
 jobs:
   build-macos:
     strategy:
@@ -16,9 +19,9 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
-            runner: macos-latest
+            runner: macos-latest  # M1/ARM64 runner
           - target: x86_64-apple-darwin
-            runner: macos-latest
+            runner: macos-13  # Intel runner
 
     runs-on: ${{ matrix.runner }}
 
