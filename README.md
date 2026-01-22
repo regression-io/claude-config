@@ -1,36 +1,45 @@
-# Claude Config
+# Coder Config
 
-Configuration helper for **Claude Code** — manage MCPs, rules, permissions, and memory through a visual UI or CLI.
+Configuration manager for AI coding tools — **Claude Code**, **Gemini CLI**, **Codex CLI**, and **Antigravity**. Manage MCPs, rules, permissions, memory, and workstreams through a visual UI or CLI.
+
+> **Migration note:** This package was renamed from `@regression-io/claude-config` to `coder-config`. The `claude-config` command still works as an alias.
 
 ## Why?
 
-Claude Code works great out of the box. This tool helps when you need more control:
+One tool to configure all your AI coding assistants:
 
 | | |
 |---|---|
-| **MCP Servers** | Configure without editing JSON files |
+| **MCP Servers** | Configure without editing JSON/TOML files |
 | **Permissions** | Visual editor for allow/deny rules |
-| **MCP Tool Permissions** | Discover and control individual MCP tools |
+| **Multi-Tool** | Claude Code, Gemini CLI, Codex CLI, Antigravity |
 | **Rules & Commands** | Manage project-specific guidelines |
 | **Memory** | Persistent context across sessions |
-| **Multi-Project** | Share configurations via hierarchy |
+| **Workstreams** | Group projects with shared context |
 
 ## Installation
 
 ```bash
-npm install -g @regression-io/claude-config
+npm install -g coder-config
 ```
 
 Requires Node.js 18+.
+
+> **Migrating from @regression-io/claude-config?**
+> ```bash
+> npm uninstall -g @regression-io/claude-config
+> npm install -g coder-config
+> ```
+> Your settings in `~/.claude-config/` are preserved automatically.
 
 ## Quick Start
 
 ```bash
 # 1. Install
-npm install -g @regression-io/claude-config
+npm install -g coder-config
 
 # 2. Set up auto-start (recommended)
-claude-config ui install
+coder-config ui install
 
 # 3. Open the UI
 open http://localhost:3333
@@ -41,43 +50,45 @@ The server starts automatically on login. Install as a PWA from your browser for
 ### Updating
 
 ```bash
-claude-config update
-# Then restart: claude-config ui stop && claude-config ui
+coder-config update
+# Then restart: coder-config ui stop && coder-config ui
 ```
 
 ### CLI Alternative
 
 ```bash
 # Initialize a project
-claude-config init
+coder-config init
 
 # Add MCPs to your project
-claude-config add postgres github
+coder-config add postgres github
 
 # Generate .mcp.json for Claude Code
-claude-config apply
+coder-config apply
 ```
 
 ## CLI Commands
 
+Both `coder-config` and `claude-config` work identically.
+
 ### Project Commands
 
 ```bash
-claude-config init                        # Initialize project
-claude-config apply                       # Generate .mcp.json from config
-claude-config show                        # Show current project config
-claude-config list                        # List available MCPs (✓ = active)
-claude-config add <mcp> [mcp...]          # Add MCP(s) to project
-claude-config remove <mcp> [mcp...]       # Remove MCP(s) from project
+coder-config init                        # Initialize project
+coder-config apply                       # Generate .mcp.json from config
+coder-config show                        # Show current project config
+coder-config list                        # List available MCPs (✓ = active)
+coder-config add <mcp> [mcp...]          # Add MCP(s) to project
+coder-config remove <mcp> [mcp...]       # Remove MCP(s) from project
 ```
 
 ### Memory Commands
 
 ```bash
-claude-config memory                         # Show memory status
-claude-config memory init                    # Initialize project memory
-claude-config memory add <type> "<content>"  # Add entry
-claude-config memory search <query>          # Search all memory
+coder-config memory                         # Show memory status
+coder-config memory init                    # Initialize project memory
+coder-config memory add <type> "<content>"  # Add entry
+coder-config memory search <query>          # Search all memory
 
 # Types: preference, correction, fact (global)
 #        context, pattern, decision, issue, history (project)
@@ -86,46 +97,47 @@ claude-config memory search <query>          # Search all memory
 ### Environment Commands
 
 ```bash
-claude-config env                    # List environment variables
-claude-config env set <KEY> <value>  # Set variable in .claude/.env
-claude-config env unset <KEY>        # Remove variable
+coder-config env                    # List environment variables
+coder-config env set <KEY> <value>  # Set variable in .claude/.env
+coder-config env unset <KEY>        # Remove variable
 ```
 
 ### Project Commands
 
 ```bash
-claude-config project                      # List registered projects
-claude-config project add [path]           # Add project (defaults to cwd)
-claude-config project add [path] --name X  # Add with custom display name
-claude-config project remove <name|path>   # Remove from registry
+coder-config project                      # List registered projects
+coder-config project add [path]           # Add project (defaults to cwd)
+coder-config project add [path] --name X  # Add with custom display name
+coder-config project remove <name|path>   # Remove from registry
 ```
 
 ### Workstream Commands
 
 ```bash
-claude-config workstream                   # List all workstreams
-claude-config workstream create "Name"     # Create new workstream
-claude-config workstream delete <name>     # Delete workstream
-claude-config workstream use <name>        # Activate workstream (this terminal)
-claude-config workstream active            # Show current active workstream
-claude-config workstream deactivate        # Deactivate workstream (this terminal)
-claude-config workstream add <ws> <path>   # Add project to workstream
-claude-config workstream remove <ws> <path>  # Remove project from workstream
-claude-config workstream inject [--silent] # Output restriction + context (for hooks)
-claude-config workstream detect [path]     # Detect workstream for directory
-claude-config workstream check-path <path> # Check if path is within workstream (exit 0/1)
-claude-config workstream install-hook      # Install hook for Claude Code
-claude-config workstream install-hook --gemini  # Install hook for Gemini CLI
-claude-config workstream install-hook --all     # Install hooks for all supported tools
+coder-config workstream                   # List all workstreams
+coder-config workstream create "Name"     # Create new workstream
+coder-config workstream delete <name>     # Delete workstream
+coder-config workstream use <name>        # Activate workstream (this terminal)
+coder-config workstream active            # Show current active workstream
+coder-config workstream deactivate        # Deactivate workstream (this terminal)
+coder-config workstream add <ws> <path>   # Add project to workstream
+coder-config workstream remove <ws> <path>  # Remove project from workstream
+coder-config workstream inject [--silent] # Output restriction + context (for hooks)
+coder-config workstream detect [path]     # Detect workstream for directory
+coder-config workstream check-path <path> # Check if path is within workstream (exit 0/1)
+coder-config workstream install-hook      # Install hook for Claude Code
+coder-config workstream install-hook --gemini  # Install hook for Gemini CLI
+coder-config workstream install-hook --codex   # Install hook for Codex CLI
+coder-config workstream install-hook --all     # Install hooks for all supported tools
 ```
 
 **Per-terminal isolation**: With [shell integration](#shell-integration), each terminal can have its own active workstream:
 ```bash
 # Terminal 1
-claude-config workstream use project-a
+coder-config workstream use project-a
 
 # Terminal 2
-claude-config workstream use project-b
+coder-config workstream use project-b
 ```
 
 When active, the AI receives a restriction telling it to only work within the workstream's directories.
@@ -133,32 +145,32 @@ When active, the AI receives a restriction telling it to only work within the wo
 **Multi-tool support**: Workstreams work with Claude Code, Gemini CLI, and Codex CLI. Install hooks for your preferred tool(s):
 ```bash
 # For Claude Code only
-claude-config workstream install-hook
+coder-config workstream install-hook
 
 # For Gemini CLI only
-claude-config workstream install-hook --gemini
+coder-config workstream install-hook --gemini
 
 # For Codex CLI only
-claude-config workstream install-hook --codex
+coder-config workstream install-hook --codex
 
 # For all supported tools
-claude-config workstream install-hook --all
+coder-config workstream install-hook --all
 ```
 
 ### Registry Commands
 
 ```bash
-claude-config registry                       # List MCPs in global registry
-claude-config registry add <name> '<json>'   # Add MCP to global registry
-claude-config registry remove <name>         # Remove MCP from registry
+coder-config registry                       # List MCPs in global registry
+coder-config registry add <name> '<json>'   # Add MCP to global registry
+coder-config registry remove <name>         # Remove MCP from registry
 ```
 
 ### Updates
 
 ```bash
-claude-config update             # Check npm and install updates if available
-claude-config update --check     # Check for updates without installing
-claude-config update /path/src   # Update from local development source
+coder-config update             # Check npm and install updates if available
+coder-config update --check     # Check for updates without installing
+coder-config update /path/src   # Update from local development source
 ```
 
 The UI also checks for updates automatically and shows a notification when a new version is available.
@@ -166,23 +178,23 @@ The UI also checks for updates automatically and shows a notification when a new
 ### Web UI
 
 ```bash
-claude-config ui                    # Start UI on port 3333
-claude-config ui --port 8080        # Custom port
-claude-config ui /path/to/project   # Specific project directory
-claude-config ui --foreground       # Run in foreground (blocking)
-claude-config ui status             # Check if daemon is running
-claude-config ui stop               # Stop the daemon
+coder-config ui                    # Start UI on port 3333
+coder-config ui --port 8080        # Custom port
+coder-config ui /path/to/project   # Specific project directory
+coder-config ui --foreground       # Run in foreground (blocking)
+coder-config ui status             # Check if daemon is running
+coder-config ui stop               # Stop the daemon
 
 # Auto-start on login (macOS)
-claude-config ui install            # Install LaunchAgent for auto-start
-claude-config ui uninstall          # Remove auto-start
+coder-config ui install            # Install LaunchAgent for auto-start
+coder-config ui uninstall          # Remove auto-start
 ```
 
-**Daemon Mode**: By default, `claude-config ui` runs as a background daemon.
+**Daemon Mode**: By default, `coder-config ui` runs as a background daemon.
 The UI runs from your home directory and persists across terminal sessions.
 Switch between registered projects using the dropdown in the header.
 
-**PWA / Auto-Start**: Install the UI as a PWA in your browser, then run `claude-config ui install`
+**PWA / Auto-Start**: Install the UI as a PWA in your browser, then run `coder-config ui install`
 to have the server start automatically on login. Your PWA will always connect instantly.
 
 ## Shell Integration
@@ -190,7 +202,7 @@ to have the server start automatically on login. Your PWA will always connect in
 For full functionality, add to `~/.zshrc`:
 
 ```bash
-source /path/to/claude-config/shell/claude-config.zsh
+source /path/to/coder-config/shell/claude-config.zsh
 ```
 
 This enables:
@@ -213,7 +225,7 @@ Sub-projects are automatically detected (folders with `.git`), or you can manual
 
 ## Project Structure
 
-After `claude-config init`:
+After `coder-config init`:
 
 ```
 your-project/
@@ -289,15 +301,15 @@ When working on complex features that span multiple repos (e.g., REST API + UI +
 
 ```bash
 # Create a workstream for user authentication feature
-claude-config workstream create "User Auth"
+coder-config workstream create "User Auth"
 
 # Add related projects
-claude-config workstream add "User Auth" ~/projects/api
-claude-config workstream add "User Auth" ~/projects/ui
-claude-config workstream add "User Auth" ~/projects/shared
+coder-config workstream add "User Auth" ~/projects/api
+coder-config workstream add "User Auth" ~/projects/ui
+coder-config workstream add "User Auth" ~/projects/shared
 
 # Activate it
-claude-config workstream use "User Auth"
+coder-config workstream use "User Auth"
 ```
 
 Then in the Web UI, edit the workstream to add rules like:
@@ -313,14 +325,14 @@ For rules to be injected automatically, install the pre-prompt hook:
 **Option 2: Manual**
 ```bash
 # Add to ~/.claude/hooks/pre-prompt.sh
-claude-config workstream inject --silent
+coder-config workstream inject --silent
 ```
 
 Once installed, your active workstream's rules are prepended to every Claude session.
 
 ### Activity Tracking & Suggestions
 
-Claude-config can track which files you work on and suggest workstreams based on patterns:
+Coder-config can track which files you work on and suggest workstreams based on patterns:
 
 **How it works:**
 1. A post-response hook logs file paths accessed during Claude sessions
@@ -331,7 +343,7 @@ Claude-config can track which files you work on and suggest workstreams based on
 ```bash
 # Install the activity tracking hook
 # Add to ~/.claude/hooks/post-response.sh:
-source /path/to/claude-config/hooks/activity-track.sh
+source /path/to/coder-config/hooks/activity-track.sh
 ```
 
 **In the Web UI:**
@@ -374,7 +386,7 @@ Claude Code plugins extend functionality with LSP servers, MCP servers, commands
 
 **From CLI:**
 ```bash
-# Add the claude-config plugins marketplace
+# Add the coder-config plugins marketplace
 claude plugin marketplace add regression-io/claude-config-plugins
 
 # Install framework-specific plugins
@@ -516,7 +528,7 @@ User settings stored in `~/.claude-config/config.json`:
 | `toolsDir` | Directory for local MCP tools |
 | `registryPath` | Path to custom MCP registry |
 | `ui.port` | Default port for web UI |
-| `ui.openBrowser` | Auto-open browser on `claude-config ui` |
+| `ui.openBrowser` | Auto-open browser on `coder-config ui` |
 
 ## Requirements
 

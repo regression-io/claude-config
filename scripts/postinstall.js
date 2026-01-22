@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Post-install script for claude-config
+ * Post-install script for coder-config
  * Sets up default configuration if not present
  */
 
@@ -112,5 +112,11 @@ function rebuildNodePty() {
 
 rebuildNodePty();
 
-console.log('\nClaude Config installed successfully!');
-console.log('Run "claude-config" to start the UI.\n');
+console.log('\n✓ Coder Config installed successfully!');
+console.log('');
+console.log('Commands:');
+console.log('  coder-config ui      Start the web UI');
+console.log('  coder-config init    Initialize a project');
+console.log('  coder-config --help  Show all commands');
+console.log('');
+console.log('Note: "claude-config" also works as an alias.\n');
